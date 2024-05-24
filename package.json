@@ -1,76 +1,32 @@
 {
-	"name": "evelyn",
-	"version": "5.0.0-beta1",
-	"description": "A Discord Bot that puts you as its first priority with no paywalls to interrupt your supercharged experience.",
-	"main": "dist/launch.js",
-	"type": "module",
-	"scripts": {
-		"start": "tsx launch.ts",
-		"build": "tsup --watch",
-		"dev": "tsx --watch launch.ts",
-		"debug": "tsx --inspect --watch src/launch.ts"
-	},
-	"files": [
-		"dist"
-	],
-	"tsup": {
-		"dts": true,
-		"bundle": false,
-		"treeshake": true,
-		"target": "node16",
-		"format": [
-			"esm"
-		],
-		"entry": [
-			"src/**/*.ts",
-			"launch.ts"
-		]
-	},
-	"dependencies": {
-		"@colors/colors": "^1.6.0",
-		"@discordx/importer": "^1.3.0",
-		"@discordx/utilities": "^6.1.0",
-		"@sentry/browser": "^7.86.0",
-		"@sentry/cli": "^2.23.0",
-		"@sentry/node": "^7.86.0",
-		"@sentry/profiling-node": "^1.2.6",
-		"@shadowrunners/automata": "^2.4.3",
-		"captcha-canvas": "^3.2.1",
-		"cryptr": "^6.3.0",
-		"discord-arts": "^0.5.8",
-		"discord-economy-super": "^1.7.6",
-		"discord-giveaways-super": "^1.0.9",
-		"discord-html-transcripts": "^3.2.0",
-		"discord-xp": "github:MrAugu/discord-xp",
-		"discord.js": "^14.14.1",
-		"discordx": "^11.9.0",
-		"genius-lyrics": "^4.4.6",
-		"glob": "^10.3.10",
-		"mongoose": "^8.0.3",
-		"ms": "^2.1.3",
-		"musicard": "^1.5.2",
-		"node-replicate": "^2.0.0",
-		"superagent": "^8.1.2"
-	},
-	"devDependencies": {
-		"@types/ms": "^0.7.34",
-		"@types/superagent": "^4.1.24",
-		"@typescript-eslint/eslint-plugin": "^6.13.2",
-		"@typescript-eslint/parser": "^6.13.2",
-		"eslint": "^8.55.0",
-		"prettier": "^3.1.0",
-		"tsup": "^8.0.1",
-		"tsx": "^4.6.2",
-		"typescript": "^5.3.3"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/shadowrunners/evelyn.git"
-	},
-	"author": "Shadowrunners",
-	"license": "GPL-v3",
-	"bugs": {
-		"url": "https://github.com/shadowrunners/evelyn/issues"
-	},
-	"homepage": "https://github.com/shadowrunners/evelyn#readme"
+  "name": "1-starter",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "build/main.js",
+  "scripts": {
+    "build": "tsc",
+    "build:changelog": "npx @discordx/changelog --src src",
+    "dev": "node --loader ts-node/esm/transpile-only src/main.ts",
+    "start": "node build/main.js",
+    "watch": "nodemon --exec npm run dev --watch src --ext ts"
+  },
+  "dependencies": {
+    "@discordx/importer": "^1.3.0",
+    "@discordx/pagination": "^3.5.0",
+    "discord.js": "^14.14.1",
+    "discordx": "^11.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.5",
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "5.3.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  }
 }
