@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": "./",
     "target": "ESNext",
     "module": "ESNext",
     "outDir": "build",
@@ -12,7 +13,11 @@
     "emitDecoratorMetadata": false,
 
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+
+    "paths": {
+      "@Evelyn": ["./src/main.ts"],
+    }
   },
   "exclude": ["build", "node_modules"]
 }
