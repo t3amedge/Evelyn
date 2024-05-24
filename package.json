@@ -1,28 +1,34 @@
 {
-  "name": "1-starter",
-  "version": "1.0.0",
-  "private": true,
+  "name": "@shadowworks/evelyn",
+  "version": "5.0.0",
   "license": "MIT",
   "type": "module",
   "main": "build/main.js",
   "scripts": {
     "build": "tsc",
     "build:changelog": "npx @discordx/changelog --src src",
-    "dev": "node --loader ts-node/esm/transpile-only src/main.ts",
+    "dev": "tsx src/launch.ts",
     "start": "node build/main.js",
-    "watch": "nodemon --exec npm run dev --watch src --ext ts"
+    "watch": "tsx watch src/launch.ts"
   },
   "dependencies": {
+    "@discordx/di": "^3.3.0",
     "@discordx/importer": "^1.3.0",
     "@discordx/pagination": "^3.5.0",
+    "@mikro-orm/core": "^6.2.8",
+    "@mikro-orm/mongodb": "^6.2.8",
+    "@ptkdev/logger": "^1.8.0",
     "discord.js": "^14.14.1",
-    "discordx": "^11.9.0"
+    "discordx": "^11.9.0",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.5",
     "nodemon": "^3.0.2",
     "prettier": "^3.1.1",
     "ts-node": "^10.9.2",
+    "tsx": "^4.11.0",
     "typescript": "5.3.3"
   },
   "engines": {
