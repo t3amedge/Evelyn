@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import { Discord, Slash, SlashOption, SlashChoice, Guard } from 'discordx';
 import { RateLimit, TIME_UNIT } from '@discordx/utilities';
-import { WaifuEngine } from '../../Utils/APIs/waifuAPI.js';
+import { WaifuEngine } from '@/Utils/APIs/waifuAPI.js';
 
 @Discord()
 export class Actions {

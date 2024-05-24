@@ -1,17 +1,13 @@
-import {
-	ApplicationCommandOptionType,
-	ChatInputCommandInteraction,
-	PermissionFlagsBits,
-	EmbedBuilder,
-} from 'discord.js';
+import { ApplicationCommandOptionType, ChatInputCommandInteraction } from 'discord.js';
 import { Discord, Slash, SlashOption } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed';
 
 @Discord()
 export class Clear {
 	@Slash({
 		name: 'clear',
 		description: 'Clear a number of messages.',
-		defaultMemberPermissions: PermissionFlagsBits.ManageMessages,
+		defaultMemberPermissions: 'ManageMessages',
 	})
 	async clear(
 		@SlashOption({
@@ -24,21 +20,21 @@ export class Clear {
 			interaction: ChatInputCommandInteraction,
 	) {
 		const { channel } = interaction;
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
 		if (messages > 100 || messages < 1)
 			return interaction.reply({
 				embeds: [
-					embed.setDescription(
-						'🔹 | You can\'t delete more than 100 messages or less than 1 message at once.',
-					),
+					EvieEmbed()
+						.setDescription(
+							'🔹 | You can\'t delete more than 100 messages or less than 1 message at once.',
+						),
 				],
 				ephemeral: true,
 			});
 
 		await channel.bulkDelete(messages, true).then(() => {
 			return interaction.reply({
-				embeds: [embed.setDescription(`🔹 | Cleared ${messages} messages.`)],
+				embeds: [EvieEmbed().setDescription(`🔹 | Cleared ${messages} messages.`)],
 			});
 		});
 	}

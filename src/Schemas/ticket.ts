@@ -1,6 +1,6 @@
 import { model, Schema } from 'mongoose';
 
-export const Tickets = model(
+export const TicketDB = model(
 	'Tickets',
 	new Schema({
 		id: String,

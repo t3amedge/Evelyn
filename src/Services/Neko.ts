@@ -1,17 +1,14 @@
-/**
- * This class contains our own custom version of a wrapper for the NekoBot API to reduce the amount of packages we're using.
- * This bares a lot of resemblence to the waifu.pics API wrapper we use in our /actions system but this one is tailored to the API we mentioned earlier.
- */
-import superagent from 'superagent';
 import { EmbedBuilder, ChatInputCommandInteraction, User } from 'discord.js';
+import { EvieEmbed } from '@/Utils/EvieEmbed';
+import superagent from 'superagent';
+import { singleton } from 'tsyringe';
 
+@singleton()
+/** A wrapper for the NekoBot API. */
 export class NekoAPI {
 	private apiURL: string;
 	private embed: EmbedBuilder;
 	private interaction: ChatInputCommandInteraction;
-	private name: string;
-	private iconURL: string;
-	private target: User;
 	private otherEmbed: EmbedBuilder;
 	private user1: User;
 	private user2: User;
@@ -23,14 +20,12 @@ export class NekoAPI {
 	constructor(interaction: ChatInputCommandInteraction) {
 		this.apiURL = 'https://nekobot.xyz/api/imagegen';
 		/** Base embed used to reduce repeated code. */
-		this.embed = new EmbedBuilder()
-			.setColor('Blurple')
+		this.embed = EvieEmbed()
 			.setFooter({
 				text: 'This image was brought to you by the NekoBot API.',
-			})
-			.setTimestamp();
+			});
 		/** Base embed used for other purposes. */
-		this.otherEmbed = new EmbedBuilder().setColor('Blurple').setTimestamp();
+		this.otherEmbed = EvieEmbed();
 		/** The interaction object used for replying and fetching usernames. */
 		this.interaction = interaction;
 
@@ -38,33 +33,24 @@ export class NekoAPI {
 		this.user2 = null;
 	}
 
-	/** Retrieves the image from the endpoint provided. */
-	private async fetchImage(endpoint: string) {
+	/** A reusable function that fetches stuff from the API based on the provided query. */
+	private async fetch(query: string) {
 		try {
-			const res = await superagent.get(`${this.apiURL}${endpoint}`);
-			return res.body.message;
+			const { body } = await superagent.get(`${this.apiURL}${query}`);
+			return body.message as string;
 		}
 		catch {
 			return this.interaction.editReply({
-				embeds: [
-					this.otherEmbed.setDescription(
-						'🔹 | There was an error while fetching the image from the API.',
-					),
-				],
+				embeds: [this.otherEmbed.setDescription('🔹 | There was an error while fetching the image from the API.')],
 			});
 		}
 	}
 
 	/** Checks for a target user to display in the embed whenever a person needs to be mentioned. */
-	checkTarget(user1: User, user2: User) {
-		this.target1 = user1;
-		this.target2 = user2;
-
-		if (!this.target1) {
+	private validateUser(user: User) {
+		if (!user) {
 			return this.interaction.editReply({
-				embeds: [
-					this.otherEmbed.setDescription('🔹 | You forgot to provide a user.'),
-				],
+				embeds: [this.otherEmbed.setDescription('🔹 | You must provide a user.')],
 			});
 		}
 	}
@@ -75,11 +61,7 @@ export class NekoAPI {
 
 		if (!text) {
 			return this.interaction.editReply({
-				embeds: [
-					this.otherEmbed.setDescription(
-						'🔹 | You forgot to provide some text.',
-					),
-				],
+				embeds: [this.otherEmbed.setDescription('🔹 | You forgot to provide some text.')],
 			});
 		}
 	}
@@ -107,36 +89,32 @@ export class NekoAPI {
 	}
 
 	/** Fetches the image and replies with it in an embed. */
-	async fetchandSend(
-		type: string,
+	public async fetchandSend(
+		type: ImageTypes,
 		user1?: User,
 		user2?: User,
 		params?: string,
 	) {
 		if (user1 && user2) this.checkTarget(user1, user2);
 
-		const image = (await this.fetchImage(`?type=${type}&${params}`)) as string;
+		const image = await this.fetch(`?type=${type}&${params}`) as string;
 		return this.interaction.editReply({ embeds: [this.embed.setImage(image)] });
 	}
 
 	/** Fetches the awooified image from the API and replies with an embed of it. */
-	awooify(user1: User, user2: User) {
-		return this.fetchandSend(
-			'awooify',
-			user1,
-			user2,
-			`url=${this.fetchAvatars(user1, user2)}`,
-		);
+	public async awooify(user: User) {
+		if (user) this.validateUser(user);
+
+		const image = await this.fetch(`/awooify?url=${user.avatarURL()}`) as string;
+		return this.interaction.editReply({ embeds: [this.embed.setImage(image)] });
 	}
 
 	/** Fetches the baguette image from the API and replies with an embed of it. */
-	baguette(user1: User, user2: User) {
-		return this.fetchandSend(
-			'baguette',
-			user1,
-			user2,
-			`url=${this.fetchAvatars(user1, user2)}`,
-		);
+	public async baguette(user: User) {
+		if (user) this.validateUser(user);
+
+		const image = await this.fetch(`/baguette?url=${user.avatarURL()}`) as string;
+		return this.interaction.editReply({ embeds: [this.embed.setImage(image)] });
 	}
 
 	/** Fetches the blurpified image from the API and replies with an embed of it. */
@@ -237,3 +215,6 @@ export class NekoAPI {
 		);
 	}
 }
+
+type ImageTypes = 
+	'awooify' |

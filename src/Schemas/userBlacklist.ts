@@ -11,7 +11,7 @@ interface UBInterface {
 	time: number;
 }
 
-export const UserBlacklist = model<UBInterface>(
+export const UserBlacklistDB = model<UBInterface>(
 	'UBlacklist',
 	new Schema({
 		isBlacklisted: Boolean,

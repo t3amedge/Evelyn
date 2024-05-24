@@ -1,19 +1,19 @@
-import {
-	EmbedBuilder,
-	ApplicationCommandOptionType,
-	ChatInputCommandInteraction,
-} from 'discord.js';
+import { ApplicationCommandOptionType, ChatInputCommandInteraction } from 'discord.js';
 import { Discord, Guard, Slash, SlashOption } from 'discordx';
 import { RateLimit, TIME_UNIT } from '@discordx/utilities';
-import { GBooksAPI } from '../../Utils/APIs/gBooksAPI.js';
+import { inject, injectable } from 'tsyringe';
+import { EvieEmbed } from '@/Utils/EvieEmbed';
+import { GoogleBooks } from '@Services';
 
 @Discord()
+@injectable()
 export class Book {
-	private embed: EmbedBuilder;
+	// eslint-disable-next-line no-empty-function
+	constructor(@inject(GoogleBooks) private readonly gBooks: GoogleBooks) {}
 
 	@Slash({
-		description: 'Get info about a book using Google Books.',
 		name: 'book',
+		description: 'Get info about a book using Google Books.',
 	})
 	@Guard(
 		RateLimit(TIME_UNIT.seconds, 30, {
@@ -31,46 +31,51 @@ export class Book {
 			title: string,
 			interaction: ChatInputCommandInteraction,
 	) {
-		const bookAPI = new GBooksAPI(interaction);
-		const book = await bookAPI.fetchBook(title);
-		this.embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-
-		return interaction.reply({
-			embeds: [
-				this.embed
-					.setTitle(book.title)
-					.setDescription(book.description)
-					.addFields(
-						{
-							name: 'Categories',
-							value: `> ${book.categories}`,
-						},
-						{
-							name: 'Written by',
-							value: `> ${book.authors}`,
-							inline: true,
-						},
-						{
-							name: 'Published by',
-							value: `> ${book.publisher}`,
-							inline: true,
-						},
-						{
-							name: 'Pages',
-							value: `> ${book.pageCount}`,
-							inline: true,
-						},
-						{
-							name: 'Released',
-							value: `> <t:${book.publishedDateUnix}>`,
-							inline: true,
-						},
-					)
-					.setFooter({
-						text: 'This information has been brought to you by the Google Books API.',
-					})
-					.setThumbnail(book.coverImage.thumbnail),
-			],
-		});
+		await this.gBooks.fetchBook(title)
+			.then((book) => {
+				return interaction.reply({
+					embeds: [
+						EvieEmbed()
+							.setTitle(book.title)
+							.setDescription(book.description)
+							.addFields(
+								{
+									name: 'Categories',
+									value: `> ${book.categories}`,
+								},
+								{
+									name: 'Written by',
+									value: `> ${book.authors}`,
+									inline: true,
+								},
+								{
+									name: 'Published by',
+									value: `> ${book.publisher}`,
+									inline: true,
+								},
+								{
+									name: 'Pages',
+									value: `> ${book.pageCount}`,
+									inline: true,
+								},
+								{
+									name: 'Released',
+									value: `> <t:${book.publishedDateUnix}>`,
+									inline: true,
+								},
+							)
+							.setFooter({
+								text: 'This information has been brought to you by Google Books',
+							})
+							.setTimestamp()
+							.setThumbnail(book.coverImage.thumbnail),
+					],
+				});
+			}).catch(() => {
+				return interaction.reply({
+					embeds: [EvieEmbed().setDescription('🔹 | No results found.')],
+					ephemeral: true,
+				});
+			});
 	}
 }

@@ -1,6 +1,6 @@
-import { LockdownDB as DB } from '../../Schemas/lockdown.js';
-import { Evelyn } from '../../Evelyn.js';
+import { Lockdowns as DB } from '@Schemas';
 import { TextChannel } from 'discord.js';
+import { Evelyn } from '@Evelyn';
 
 export async function check4Lockdowns(client: Evelyn) {
 	const data = await DB.find();

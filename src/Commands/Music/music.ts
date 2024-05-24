@@ -1,21 +1,23 @@
+import { Discord, Slash, SlashGroup, SlashOption, SlashChoice, ButtonComponent, Guard } from 'discordx';
+import { ApplicationCommandOptionType, AttachmentBuilder } from 'discord.js';
+import { embedPages, formatTime } from '@/Utils/Helpers/messageHelpers.js';
+import { Player } from '@shadowrunners/automata';
+import { Client } from 'genius-lyrics';
+import { musicCard } from 'musicard';
+import { Evelyn } from '@Evelyn';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
 import type {
 	ExtendedButtonInteraction,
 	ExtendedChatInteraction,
-} from '../../Interfaces/Interfaces.js';
-import { ApplicationCommandOptionType, EmbedBuilder } from 'discord.js';
+} from '@/Interfaces/Interfaces.js';
 import {
-	Discord,
-	Slash,
-	SlashGroup,
-	SlashOption,
-	SlashChoice,
-	ButtonComponent,
-} from 'discordx';
-import { check, checkQuery } from '../../Utils/Checks/musicChecks.js';
-import { Util } from '../../Utils/Utils/Util.js';
-import { Player } from '@shadowrunners/automata';
-import { Evelyn } from '../../Evelyn.js';
-import { Client } from 'genius-lyrics';
+	IsInsideVC,
+	IsPlaying,
+	IsOver100Vol,
+	IsSub0Vol,
+	IsYTLink,
+	HasQueue,
+} from '@Guards';
 
 @Discord()
 @SlashGroup({
@@ -25,16 +27,15 @@ import { Client } from 'genius-lyrics';
 @SlashGroup('music')
 export class Music {
 	private player: Player | undefined;
-	private util: Util;
-
-	constructor() {
-		this.util = new Util();
-	}
 
 	@Slash({
 		name: 'play',
 		description: 'Plays a song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsYTLink,
+	)
 	async play(
 		@SlashOption({
 			name: 'query',
@@ -47,11 +48,8 @@ export class Music {
 			client: Evelyn,
 	) {
 		const { guild, channelId, user, member } = interaction;
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-
-		if (await check(['voiceCheck'], interaction)) return;
-
 		const res = await client.manager.resolve({ query, requester: member.user });
+		const embed = EvieEmbed();
 
 		this.player = client.manager.create({
 			guildId: guild.id,
@@ -59,8 +57,6 @@ export class Music {
 			textChannel: channelId,
 			deaf: true,
 		});
-
-		if (await checkQuery(query, interaction)) return;
 
 		await interaction.deferReply();
 
@@ -83,7 +79,7 @@ export class Music {
 							name: 'Playlist added to the queue',
 							iconURL: user.avatarURL(),
 						})
-						.setDescription(`**[${res.playlist.name}](${query})**`)
+						.setDescription(`**[${res.playlist.info.name}](${query})**`)
 						.addFields(
 							{
 								name: 'Added',
@@ -129,7 +125,7 @@ export class Music {
 			if (this.player.queue.size > 1)
 				embed.addFields({
 					name: 'Position in queue',
-					value: `${this.player.queue.size - 0}`,
+					value: `${this.player.queue.size}`,
 					inline: true,
 				});
 			return interaction.editReply({ embeds: [embed] });
@@ -151,35 +147,27 @@ export class Music {
 		name: 'volume',
 		description: 'Alters the volume.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+		IsOver100Vol,
+		IsSub0Vol,
+	)
 	async volume(
 		@SlashOption({
 			name: 'percent',
-			description: 'Provide the name of the song or URL.',
+			description: 'Provide the new volume value.',
 			required: true,
 			type: ApplicationCommandOptionType.Number,
 		})
 			percent: number,
 			interaction: ExtendedChatInteraction,
 	) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
-		if (percent > 100 || percent < 0)
-			return interaction.reply({
-				embeds: [
-					embed.setDescription(
-						'🔹| You can only set the volume from 0 to 100.',
-					),
-				],
-				ephemeral: true,
-			});
-
 		this.player.setVolume(percent);
 
 		return interaction.reply({
 			embeds: [
-				embed.setDescription(
+				EvieEmbed().setDescription(
 					`🔹 | Volume has been set to **${this.player.volume}%**.`,
 				),
 			],
@@ -190,6 +178,10 @@ export class Music {
 		name: 'seek',
 		description: 'Skip to a specific time in the song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async seek(
 		@SlashOption({
 			name: 'time',
@@ -200,27 +192,19 @@ export class Music {
 			time: number,
 			interaction: ExtendedChatInteraction,
 	) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		const duration = Number(time) * 1000;
 		const trackDuration = this.player.queue.current.length;
 
 		if (duration > trackDuration)
 			return interaction.reply({
-				embeds: [embed.setDescription('🔹 | Invalid seek time.')],
+				embeds: [EvieEmbed().setDescription('🔹 | Invalid seek time.')],
 				ephemeral: true,
 			});
 
 		this.player.seek(duration);
 
 		return interaction.reply({
-			embeds: [
-				embed.setDescription(
-					`🔹 | Seeked to ${this.util.formatTime(duration)}.`,
-				),
-			],
+			embeds: [EvieEmbed().setDescription(`🔹 | Seeked to ${formatTime(duration)}.`)],
 		});
 	}
 
@@ -228,6 +212,10 @@ export class Music {
 		name: 'repeat',
 		description: 'Repeat the current song or queue.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async repeat(
 		@SlashChoice({ name: '🔹 | Queue', value: 'queue' })
 		@SlashChoice({ name: '🔹 | Track', value: 'track' })
@@ -241,28 +229,24 @@ export class Music {
 			type: string,
 			interaction: ExtendedChatInteraction,
 	) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		switch (type) {
 		case 'queue':
 			this.player.setLoop('QUEUE');
 
 			return interaction.reply({
-				embeds: [embed.setDescription('🔹 | Repeat mode is now on. (Queue)')],
+				embeds: [EvieEmbed().setDescription('🔹 | Repeat mode is now on. (Queue)')],
 			});
 		case 'track':
 			this.player.setLoop('TRACK');
 
 			return interaction.reply({
-				embeds: [embed.setDescription('🔹 | Repeat mode is now on. (Song)')],
+				embeds: [EvieEmbed().setDescription('🔹 | Repeat mode is now on. (Song)')],
 			});
 		case 'none':
 			this.player.setLoop('NONE');
 
 			return interaction.reply({
-				embeds: [embed.setDescription('🔹 | Repeat mode is now off.')],
+				embeds: [EvieEmbed().setDescription('🔹 | Repeat mode is now off.')],
 			});
 		default:
 			break;
@@ -273,15 +257,16 @@ export class Music {
 		name: 'skip',
 		description: 'Skips the currently playing song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+		HasQueue,
+	)
 	async skip(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		this.player.stop();
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Skipped.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Skipped.')],
 		});
 	}
 
@@ -289,15 +274,15 @@ export class Music {
 		name: 'pause',
 		description: 'Pauses the currently playing song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async pause(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		this.player.pause(true);
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Paused.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Paused.')],
 		});
 	}
 
@@ -305,14 +290,12 @@ export class Music {
 		name: 'resume',
 		description: 'Resumes the currently playing song.',
 	})
+	@Guard(IsInsideVC)
 	async resume(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck'], interaction)) return;
-
 		this.player.pause(false);
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Resumed.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Resumed.')],
 		});
 	}
 
@@ -320,14 +303,12 @@ export class Music {
 		name: 'stop',
 		description: 'Stops the currently playing songs and disconnects the bot.',
 	})
+	@Guard(IsInsideVC)
 	async stop(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck'], interaction)) return;
-
 		this.player.destroy();
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Disconnected.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Disconnected.')],
 		});
 	}
 
@@ -335,13 +316,12 @@ export class Music {
 		name: 'lyrics',
 		description: 'Shows you the lyrics of the currently playing song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async lyrics(interaction: ExtendedChatInteraction, client: Evelyn) {
 		const gClient = new Client(client.config.APIs.geniusKey);
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		await interaction.deferReply();
 
 		const track = this.player.queue.current;
@@ -351,7 +331,7 @@ export class Music {
 
 		return interaction.editReply({
 			embeds: [
-				embed
+				EvieEmbed()
 					.setAuthor({
 						name: `🔹 | Lyrics for ${track.title}`,
 						url: searches.url,
@@ -366,15 +346,15 @@ export class Music {
 		name: 'shuffle',
 		description: 'Shuffles the queue.',
 	})
+	@Guard(
+		IsInsideVC,
+		HasQueue,
+	)
 	async shuffle(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkQueue'], interaction, this.player))
-			return;
-
 		this.player.queue.shuffle();
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Shuffled.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Shuffled.')],
 		});
 	}
 
@@ -382,24 +362,37 @@ export class Music {
 		name: 'nowplaying',
 		description: 'Shows you the currently playing song.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async nowplaying(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
 		const track = this.player.queue.current;
+
+		const card = new musicCard()
+			.setName(track.title)
+			.setAuthor(track.author)
+			.setColor('auto')
+			.setTheme('classic')
+			.setBrightness(50)
+			.setThumbnail(track.artworkUrl)
+			.setProgress(10)
+			.setStartTime('0m0s')
+			.setEndTime(formatTime(track.length));
+
+		const imgBuffer = await card.build();
+		const attachment = new AttachmentBuilder(imgBuffer, { name: 'card.png' });
 
 		return interaction.reply({
 			embeds: [
-				embed
+				EvieEmbed()
 					.setAuthor({
 						name: 'Now Playing',
 						iconURL: interaction.user.avatarURL(),
 					})
-					.setDescription(
-						`**[${track.title}](${track.uri})** [${track.requester}]`,
-					),
+					.setImage('attachment://card.png'),
 			],
+			files: [attachment],
 		});
 	}
 
@@ -407,18 +400,13 @@ export class Music {
 		name: 'queue',
 		description: 'Shows you the queue.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+		HasQueue,
+	)
 	async queue(interaction: ExtendedChatInteraction) {
-		this.util = new Util(interaction);
 		const { guild } = interaction;
-
-		if (
-			await check(
-				['voiceCheck', 'checkPlaying', 'checkQueue'],
-				interaction,
-				this.player,
-			)
-		)
-			return;
 
 		await interaction.deferReply();
 
@@ -434,23 +422,26 @@ export class Music {
 		}
 
 		for (let i = 0; i < songs.length; i += 10) {
-			const embed = new EmbedBuilder().setColor('Blurple');
+			const embed = EvieEmbed();
 
 			embed
 				.setAuthor({ name: `Current queue for ${guild.name}` })
 				.setTitle(`▶️ | Currently playing: ${this.player.queue.current.title}`)
-				.setDescription(songs.slice(i, i + 10).join('\n'))
-				.setTimestamp();
+				.setDescription(songs.slice(i, i + 10).join('\n'));
 			embeds.push(embed);
 		}
 
-		return this.util.embedPages(embeds);
+		return embedPages(embeds, interaction);
 	}
 
 	@Slash({
 		name: 'filters',
 		description: 'Applies a filter.',
 	})
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+	)
 	async filters(
 		@SlashChoice({ name: '🔹 | 3D', value: '3d' })
 		@SlashChoice({ name: '🔹 | Bass Boost', value: 'bassboost' })
@@ -472,10 +463,7 @@ export class Music {
 			option: string,
 			interaction: ExtendedChatInteraction,
 	) {
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
-		const embed = new EmbedBuilder()
+		const embed = EvieEmbed()
 			.setTitle('🎧 Filter applied!')
 			.setDescription(
 				'The filter you requested will be applied. It may take a few seconds for it to propagate.',
@@ -545,11 +533,9 @@ export class Music {
 		name: 'join',
 		description: 'Pairs the bot to your channel.',
 	})
+	@Guard(IsInsideVC)
 	async join(interaction: ExtendedChatInteraction, client: Evelyn) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 		const { guild, channelId, member } = interaction;
-
-		if (await check(['voiceCheck'], interaction)) return;
 
 		if (!this.player) {
 			this.player = client.manager.create({
@@ -558,12 +544,14 @@ export class Music {
 				textChannel: channelId,
 				deaf: true,
 			});
+
+			this.player.connect();
 		}
 
 		this.player.connect();
 
 		return interaction.reply({
-			embeds: [embed.setDescription(`🔹 | Paired to ${member.voice.channel}.`)],
+			embeds: [EvieEmbed().setDescription(`🔹 | Paired to ${member.voice.channel}.`)],
 		});
 	}
 
@@ -571,16 +559,11 @@ export class Music {
 		name: 'previous',
 		description: 'Plays the previous track.',
 	})
+	@Guard(IsInsideVC)
 	async previous(interaction: ExtendedChatInteraction) {
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-
-		if (await check(['voiceCheck'], interaction)) return;
-
 		if (!this.player?.queue?.previous)
 			return interaction.reply({
-				embeds: [
-					embed.setDescription('🔹 | Couldn\'t find the previous track.'),
-				],
+				embeds: [EvieEmbed().setDescription('🔹 | Couldn\'t find the previous track.')],
 				ephemeral: true,
 			});
 
@@ -591,7 +574,7 @@ export class Music {
 		this.player.queue.previous = null;
 
 		return interaction.reply({
-			embeds: [embed.setDescription('🔹 | Playing the previous track.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Playing the previous track.')],
 		});
 	}
 
@@ -599,111 +582,83 @@ export class Music {
 	 * The components below handle the logic
 	 * for the buttons when the 'trackStart' event gets emitted.
 	 */
-	@ButtonComponent({
-		id: 'pause',
-	})
+	@ButtonComponent({ id: 'pause' })
+	@Guard(IsInsideVC)
 	async pauseButton(interaction: ExtendedButtonInteraction) {
 		const { user } = interaction;
 
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck'], interaction)) return;
+		this.player.isPaused ? this.player.pause(false) : this.player.pause(true);
+		const description = this.player.isPaused ? '🔹 | Resumed.' : '🔹 | Paused.';
 
-		if (this.player.isPaused) {
-			this.player.pause(false);
-
-			return interaction.reply({
-				embeds: [
-					embed.setDescription('🔹 | Resumed.').setFooter({
+		return interaction.reply({
+			embeds: [
+				EvieEmbed()
+					.setDescription(description)
+					.setFooter({
 						text: `Action executed by ${user.username}.`,
 						iconURL: user.avatarURL(),
 					}),
-				],
-			});
-		}
-		else {
-			this.player.pause(true);
-
-			return interaction.reply({
-				embeds: [
-					embed.setDescription('🔹 | Paused.').setFooter({
-						text: `Action executed by ${user.username}.`,
-						iconURL: user.avatarURL(),
-					}),
-				],
-			});
-		}
+			],
+		});
 	}
 
-	@ButtonComponent({
-		id: 'shuffle',
-	})
+	@ButtonComponent({ id: 'shuffle' })
+	@Guard(
+		IsInsideVC,
+		HasQueue,
+	)
 	async shuffleButton(interaction: ExtendedButtonInteraction) {
 		const { user } = interaction;
-
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkQueue'], interaction, this.player))
-			return;
-
 		this.player.queue.shuffle();
 
 		return interaction.reply({
 			embeds: [
-				embed.setDescription('🔹 | Shuffled the queue.').setFooter({
-					text: `Action executed by ${user.username}.`,
-					iconURL: user.avatarURL(),
-				}),
+				EvieEmbed()
+					.setDescription('🔹 | Shuffled the queue.')
+					.setFooter({
+						text: `Action executed by ${user.username}.`,
+						iconURL: user.avatarURL(),
+					}),
 			],
 		});
 	}
 
-	@ButtonComponent({
-		id: 'skip',
-	})
+	@ButtonComponent({ id: 'skip' })
+	@Guard(
+		IsInsideVC,
+		HasQueue,
+	)
 	async skipButton(interaction: ExtendedButtonInteraction) {
 		const { user } = interaction;
-
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkQueue'], interaction, this.player))
-			return;
-
 		this.player.stop();
 
 		return interaction.reply({
 			embeds: [
-				embed.setDescription('🔹 | Skipped.').setFooter({
-					text: `Action executed by ${user.username}.`,
-					iconURL: user.avatarURL(),
-				}),
+				EvieEmbed()
+					.setDescription('🔹 | Skipped.')
+					.setFooter({
+						text: `Action executed by ${user.username}.`,
+						iconURL: user.avatarURL(),
+					}),
 			],
 		});
 	}
 
-	@ButtonComponent({
-		id: 'voldown',
-	})
+	@ButtonComponent({ id: 'voldown' })
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+		IsSub0Vol,
+	)
 	async volDownButton(interaction: ExtendedButtonInteraction) {
 		const { user } = interaction;
 		const volume = this.player.volume - 10;
-
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
-		if (volume < 0)
-			return interaction.reply({
-				embeds: [
-					embed.setDescription(
-						'🔹| You can only set the volume from 0 to 100.',
-					),
-				],
-				ephemeral: true,
-			});
 
 		this.player.setVolume(volume);
 
 		return interaction.reply({
 			embeds: [
-				embed
+				EvieEmbed()
 					.setDescription(
 						`🔹 | Volume has been set to **${this.player.volume}%**.`,
 					)
@@ -715,31 +670,21 @@ export class Music {
 		});
 	}
 
-	@ButtonComponent({
-		id: 'volup',
-	})
+	@ButtonComponent({ id: 'volup' })
+	@Guard(
+		IsInsideVC,
+		IsPlaying,
+		IsOver100Vol,
+	)
 	async volUpButton(interaction: ExtendedButtonInteraction) {
 		const { user } = interaction;
 		const volume = this.player.volume + 10;
-		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		if (await check(['voiceCheck', 'checkPlaying'], interaction, this.player))
-			return;
-
-		if (volume > 100)
-			return interaction.reply({
-				embeds: [
-					embed.setDescription(
-						'🔹| You can only set the volume from 0 to 100.',
-					),
-				],
-				ephemeral: true,
-			});
 
 		this.player.setVolume(volume);
 
 		return interaction.reply({
 			embeds: [
-				embed
+				EvieEmbed()
 					.setDescription(
 						`🔹 | Volume has been set to **${this.player.volume}%**.`,
 					)

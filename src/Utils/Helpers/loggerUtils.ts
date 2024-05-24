@@ -4,7 +4,7 @@
  */
 
 import { SecureStorage } from './secureStorage.js';
-import { GuildDB as DB } from '../../Schemas/guild.js';
+import { Guilds as DB } from '@Schemas';
 import {
 	ActionRowBuilder,
 	AuditLogEvent,
@@ -13,22 +13,7 @@ import {
 	Guild,
 	WebhookClient,
 } from 'discord.js';
-import { Evelyn } from '../../Evelyn.js';
-
-/**
- * Validates to see if the logging system is enabled and if the webhook exists.
- * @param guild The guild ID.
- * @returns {Promise<Boolean>} The boolean indicating if they are enabled or not.
- */
-export async function validate(guild: string): Promise<boolean> {
-	const data = await DB.findOne({
-		guildId: guild,
-	}).select('logs').lean();
-
-	if (!data.logs) return false;
-
-	return Boolean(data.logs.webhook && data.logs.enabled);
-}
+import { Evelyn } from '@Evelyn';
 
 /**
  * Searches the guild's audit log to retrieve information about who did what.

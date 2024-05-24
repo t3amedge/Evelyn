@@ -1,14 +1,19 @@
 import { model, Schema } from 'mongoose';
 
-export const Reminders = model(
+interface Reminder {
+	/** The ID of the user that needs to be reminded. */
+	userId: string;
+	/** The task the user needs to be reminded of. */
+	task: string;
+	/** The time when the reminder needs to be delivered. */
+	scheduledTime: number;
+}
+
+export const ReminderDB = model(
 	'Reminders',
-	new Schema({
-		guildId: String,
-		channelId: String,
-		messageId: String,
+	new Schema<Reminder>({
 		userId: String,
-		reminder: String,
+		task: String,
 		scheduledTime: Number,
-		hasBeenReminded: Boolean,
 	}),
 );

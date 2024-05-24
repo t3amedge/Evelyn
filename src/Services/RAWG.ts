@@ -1,28 +1,17 @@
 /**
  * This class contains our own custom version of a wrapper for the RAWG.io API.
  */
-import { RAWGInterface, BotConfig } from '../../Interfaces/Interfaces.js';
-import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
-import { Evelyn } from '../../Evelyn';
+import { RAWGInterface, BotConfig } from '@/Interfaces/Interfaces.js';
+import { config } from '@Config';
 import superagent from 'superagent';
+import { singleton } from 'tsyringe';
 
-export class RAWGAPI {
-	private apiURL: string;
-	private embed: EmbedBuilder;
-	private interaction: ChatInputCommandInteraction;
-	private config: BotConfig;
-
-	/** Creates a new instance of the IGDB API class. */
-	constructor(interaction: ChatInputCommandInteraction, client: Evelyn) {
-		/** The config object. */
-		this.config = client.config;
-		/** The URL of the API. */
-		this.apiURL = 'https://api.rawg.io/api/games';
-		/** Base embed. */
-		this.embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-		/** The interaction object used for replying. */
-		this.interaction = interaction;
-	}
+@singleton()
+export class RAWG {
+	/** The URL of the API. */
+	private apiURL: string = 'https://api.rawg.io/api/games';
+	/** The config object. */
+	private config: BotConfig = config;
 
 	/** Retrieves a game using the provided query. */
 	public async fetchGame(gameName: string): Promise<RAWGInterface> {
@@ -33,7 +22,7 @@ export class RAWGAPI {
 				'-',
 			);
 
-			const res = await superagent.get(`${this.apiURL}/${game}?key=${this.config.APIs.rawgKey}`)
+			const res = await superagent.get(`${this.apiURL}/${game}?key=${this.config.APIs.rawgKey}`);
 			const gameData = res.body;
 
 			const mappedPlatforms = gameData?.platforms
@@ -70,17 +59,9 @@ export class RAWGAPI {
 			};
 
 			return gameInfo;
-		} catch (_err) {
-			this.interaction.reply({
-				embeds: [
-					this.embed.setDescription(
-						'🔹 | There was an error while fetching the information from the API.',
-					),
-				],
-				ephemeral: true,
-			});
-
-			return;
+		}
+		catch (_err) {
+			throw new Error('There was an error while fetching the information from the API.');
 		}
 	}
 }

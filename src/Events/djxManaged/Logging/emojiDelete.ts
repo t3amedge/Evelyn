@@ -1,21 +1,21 @@
-import { getAuditLog, send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { AuditLogEvent, EmbedBuilder, GuildEmoji } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { getAuditLog, send } from '@Helpers/loggerUtils.js';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { AuditLogEvent } from 'discord.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class EmojiDelete {
 	@On({ event: 'emojiDelete' })
-	async emojiDelete([emoji]: [GuildEmoji], client: Evelyn) {
-		if (!(await validate(emoji.guild.id))) return;
-
+	@Guard(HasLogsEnabled)
+	async emojiDelete([emoji]: ArgsOf<'emojiDelete'>, client: Evelyn) {
 		const audit = await getAuditLog({
 			type: AuditLogEvent.EmojiDelete,
 			guild: emoji.guild,
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
 				name: emoji.guild.name,
 				iconURL: emoji.guild.iconURL(),

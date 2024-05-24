@@ -1,16 +1,9 @@
-import {
-	Role,
-	TextChannel,
-	EmbedBuilder,
-	ApplicationCommandOptionType,
-	ChatInputCommandInteraction,
-} from 'discord.js';
+import { Role, TextChannel, ApplicationCommandOptionType, ChatInputCommandInteraction } from 'discord.js';
 import { Discord, Slash, SlashOption } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed';
 
 @Discord()
 export class Announce {
-	private embed: EmbedBuilder;
-
 	@Slash({
 		name: 'announce',
 		description: 'Send an announcement via the bot.',
@@ -41,18 +34,16 @@ export class Announce {
 			role: Role,
 			interaction: ChatInputCommandInteraction,
 	) {
-		this.embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
-
 		interaction.reply({
-			embeds: [this.embed.setDescription('🔹 | Announcement sent.')],
+			embeds: [EvieEmbed().setDescription('🔹 | Announcement sent.')],
 			ephemeral: true,
 		});
 
 		if (role)
 			return channel.send({
 				content: `<@${role.id}>`,
-				embeds: [this.embed.setDescription(message)],
+				embeds: [EvieEmbed().setDescription(message)],
 			});
-		return channel.send({ embeds: [this.embed.setDescription(message)] });
+		return channel.send({ embeds: [EvieEmbed().setDescription(message)] });
 	}
 }

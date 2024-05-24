@@ -5,7 +5,7 @@ import {
 	TextChannel,
 } from 'discord.js';
 import { Discord, Slash } from 'discordx';
-import { LockdownDB as DB } from '../../Schemas/lockdown.js';
+import { Lockdowns as DB } from '@Schemas';
 
 @Discord()
 export class Unlock {

@@ -24,7 +24,7 @@ interface Playlists {
 	created: number;
 }
 
-export const Playlists = model<Playlists>(
+export const PlaylistDB = model<Playlists>(
 	'Playlists',
 	new Schema({
 		playlistName: String,

@@ -1,14 +1,10 @@
 import { Node } from '@shadowrunners/automata';
-import colors from '@colors/colors';
+import { Evelyn } from '@Evelyn';
 
 export default class NodeDisconnect {
 	name = 'nodeDisconnect';
 
-	execute(node: Node) {
-		console.log(
-			`${colors.magenta('Lavalink')} ${colors.white(
-				`· Lost connection to node ${node.options.name}.`,
-			)}`,
-		);
+	execute(node: Node, _event: unknown, client: Evelyn) {
+		client.evieLogger.error(`[Lavalink] Lost connection to node ${node.options.name}.`);
 	}
 }

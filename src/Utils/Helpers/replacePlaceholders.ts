@@ -5,7 +5,7 @@ export function replacePlaceholders(string: string, member: GuildMember) {
 	const { user, guild } = member;
 
 	return string
-		?.replace(/{userName}/g, user.username)
+		?.replace(/{userName}/g, user.displayName)
 		?.replace(/{userID}/g, user.id)
 		?.replace(/{userMention}/g, `<@${user.id}>`)
 		?.replace(/{guildName}/g, guild.name);

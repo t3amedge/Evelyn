@@ -1,21 +1,21 @@
-import { send, validate, getAuditLog } from '../../../Utils/Helpers/loggerUtils.js';
-import { EmbedBuilder, Role, AuditLogEvent } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { getAuditLog, send } from '@Helpers/loggerUtils.js';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { AuditLogEvent } from 'discord.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class RoleDelete {
 	@On({ event: 'roleDelete' })
-	async roleDelete([role]: [Role], client: Evelyn) {
-		if (!await validate(role.guild.id)) return;
-
+	@Guard(HasLogsEnabled)
+	async roleDelete([role]: ArgsOf<'roleDelete'>, client: Evelyn) {
 		const audit = await getAuditLog({
 			type: AuditLogEvent.RoleDelete,
 			guild: role.guild,
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
 				name: role.guild.name,
 				iconURL: role.guild.iconURL(),
@@ -32,10 +32,9 @@ export class RoleDelete {
 				},
 				{
 					name: '🔹 | Deleted by',
-					value: `> ${audit.executor}`,
+					value: `> ${audit?.executor}`,
 				},
-			)
-			.setTimestamp();
+			);
 
 		return await send({
 			guild: role.guild.id,

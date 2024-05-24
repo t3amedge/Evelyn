@@ -1,8 +1,8 @@
 import { ChatInputCommandInteraction, EmbedBuilder } from 'discord.js';
 import { RateLimit, TIME_UNIT } from '@discordx/utilities';
 import { Discord, Slash, Guard } from 'discordx';
-import { Evelyn } from '../../Evelyn.js';
 import superagent from 'superagent';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class Catto {

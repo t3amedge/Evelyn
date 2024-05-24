@@ -1,44 +1,44 @@
-import { getAuditLog, send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { AuditLogEvent, EmbedBuilder, GuildChannel } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { getAuditLog, send } from '@Helpers/loggerUtils.js';
+import { AuditLogEvent, GuildChannel } from 'discord.js';
+import { ArgsOf, Discord, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class channelDelete {
 	@On({ event: 'channelDelete' })
-	async channelDelete([channel]: [GuildChannel], client: Evelyn) {
-		if (!await validate(channel.guildId)) return;
+	async channelDelete([channel]: ArgsOf<'channelDelete'>, client: Evelyn) {
+		const typedChannel = channel as GuildChannel;
+		if (typedChannel.partial) await channel.fetch();
 
 		const audit = await getAuditLog({
 			type: AuditLogEvent.ChannelDelete,
-			guild: channel.guild,
+			guild: typedChannel.guild,
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
-				name: channel.guild.name,
-				iconURL: channel.guild.iconURL(),
+				name: typedChannel.guild.name,
+				iconURL: typedChannel.guild.iconURL(),
 			})
 			.setTitle('Channel Deleted')
 			.addFields(
 				{
 					name: '🔹 | Channel Name',
-					value: `> ${channel.name}`,
+					value: `> ${typedChannel.name}`,
 				},
 				{
 					name: '🔹 | ID',
-					value: `> ${channel.id}`,
+					value: `> ${typedChannel.id}`,
 				},
 				{
 					name: '🔹 | Deleted by',
 					value: `> ${audit.executor}`,
 				},
-			)
-			.setTimestamp();
+			);
 
 		return await send({
-			guild: channel.guildId,
+			guild: typedChannel.guildId,
 			client,
 			embed,
 		});

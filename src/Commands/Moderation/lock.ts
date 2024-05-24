@@ -5,8 +5,8 @@ import {
 	TextChannel,
 } from 'discord.js';
 import { Discord, Slash, SlashOption } from 'discordx';
-import { Util } from '../../Utils/Utils/Util.js';
-import { LockdownDB as DB } from '../../Schemas/lockdown.js';
+import { Lockdowns as DB } from '@Schemas';
+import ms from 'ms';
 
 @Discord()
 export class Lock {
@@ -32,7 +32,6 @@ export class Lock {
 			time: string,
 			interaction: ChatInputCommandInteraction,
 	) {
-		const { msToTime } = new Util();
 		const { guild, channel } = interaction;
 		const lockedChannel = channel as TextChannel;
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
@@ -60,7 +59,7 @@ export class Lock {
 		await DB.create({
 			guildId: guild.id,
 			channelId: channel.id,
-			timeLocked: Date.now() + msToTime(time),
+			timeLocked: Date.now() + ms(time),
 		});
 
 		setTimeout(async () => {
@@ -72,6 +71,6 @@ export class Lock {
 				embeds: [embed.setDescription('🔹 | This channel has been unlocked.')],
 			});
 			await DB.deleteOne({ channelId: channel.id }).catch();
-		}, msToTime(time));
+		}, ms(time));
 	}
 }

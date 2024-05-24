@@ -18,7 +18,7 @@ interface RRInterface {
 	}[];
 }
 
-export const RRoles = model<RRInterface>(
+export const RolesDB = model<RRInterface>(
 	'Roles',
 	new Schema({
 		panelName: String,

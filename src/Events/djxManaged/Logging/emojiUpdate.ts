@@ -1,24 +1,24 @@
-import { getAuditLog, send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { AuditLogEvent, EmbedBuilder, GuildEmoji } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { getAuditLog, send } from '@Helpers/loggerUtils.js';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { AuditLogEvent } from 'discord.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class EmojiUpdate {
 	@On({ event: 'emojiUpdate' })
-	async emojiUpdate(emojis: GuildEmoji, client: Evelyn) {
+	@Guard(HasLogsEnabled)
+	async emojiUpdate(emojis: ArgsOf<'emojiUpdate'>, client: Evelyn) {
 		const oldEmoji = emojis[0];
 		const newEmoji = emojis[1];
-
-		if (!(await validate(oldEmoji.guild))) return;
 
 		const audit = await getAuditLog({
 			type: AuditLogEvent.EmojiUpdate,
 			guild: oldEmoji.guild,
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
 				name: oldEmoji.guild.name,
 				iconURL: oldEmoji.guild.iconURL(),
@@ -41,7 +41,7 @@ export class EmojiUpdate {
 
 		if (oldEmoji.name !== newEmoji.name)
 			return await send({
-				guild: oldEmoji.guild,
+				guild: oldEmoji.guild.id,
 				client,
 				embed,
 			});

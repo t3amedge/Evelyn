@@ -1,3 +1,5 @@
+// TODO: Migrate to dashboard.
+
 import {
 	ApplicationCommandOptionType,
 	ChatInputCommandInteraction,
@@ -57,7 +59,7 @@ export class AutoMod {
 					metadata: {
 						channel: channel as TextChannel,
 						customMessage:
-							'Overwatch has blocked this message due to the heavy amount of mentions. Reduce the amount of mentions and try again.',
+							'Evelyn has blocked this message due to the heavy amount of mentions. Reduce the amount of mentions and try again.',
 					},
 				},
 			],

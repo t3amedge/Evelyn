@@ -1,12 +1,6 @@
-import {
-	ApplicationCommandOptionType,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-	ActivityType,
-	GuildMember,
-} from 'discord.js';
+import { ApplicationCommandOptionType, ChatInputCommandInteraction, EmbedBuilder, GuildMember } from 'discord.js';
+import { bakeUnixTimestamp } from '@Helpers/messageHelpers.js';
 import { Discord, Slash, SlashOption } from 'discordx';
-import { Util } from '../../Utils/Utils/Util.js';
 
 @Discord()
 export class UserInfo {
@@ -24,19 +18,13 @@ export class UserInfo {
 			target: GuildMember,
 			interaction: ChatInputCommandInteraction,
 	) {
-		const { convertToUnixTimestamp, capitalizePresence } = new Util();
 		const typedMember = target || interaction.member;
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
-		const { joinedTimestamp, presence, user, roles } =
-			typedMember as GuildMember;
-		const status = capitalizePresence(presence.status);
+		const { joinedTimestamp, user, roles } = typedMember as GuildMember;
 
-		const createdTime = convertToUnixTimestamp(user.createdTimestamp);
-		const joinedTime = convertToUnixTimestamp(joinedTimestamp);
-		const mappedActivities = presence?.activities?.map(
-			(activity) => `${ActivityType[activity.type]} ${activity.name}`,
-		);
+		const createdTime = bakeUnixTimestamp(user.createdTimestamp);
+		const joinedTime = bakeUnixTimestamp(joinedTimestamp);
 
 		return interaction.reply({
 			embeds: [
@@ -56,15 +44,6 @@ export class UserInfo {
 								`> **Discriminator** #${user.discriminator}`,
 								`> **Discord member since** <t:${createdTime}:R>`,
 								`> **Server member since** <t:${joinedTime}:R>`,
-							].join('\n'),
-						},
-						{
-							name: 'Activity',
-							value: [
-								`> **Status** ${status}`,
-								`> **Current Activity** ${
-									mappedActivities?.join(', ') ?? 'Nothing.'
-								}`,
 							].join('\n'),
 						},
 						{

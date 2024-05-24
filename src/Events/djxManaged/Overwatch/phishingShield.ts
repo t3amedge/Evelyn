@@ -9,6 +9,8 @@ import superagent from 'superagent';
 export class PhishingShield {
 	@On({ event: 'messageCreate' })
 	async execute([message]: [Message], client: Evelyn) {
+		if (message.partial) await message.fetch();
+
 		const { content, guildId, author } = message;
 		const bodyReg =
 			/^(?=.{1,254}$)((?!-)[A-Za-z0-9-]{1,63}(?<!\.)\.)+[A-Za-z]{2,}$/;
@@ -21,7 +23,6 @@ export class PhishingShield {
 					.set('User-Agent', config.userAgent);
 
 				if (res.status === 200 && (await validate(guildId))) {
-					console.log('Function ran.');
 					const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 					const { match } = res.body;
 

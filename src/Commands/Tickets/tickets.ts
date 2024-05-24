@@ -11,8 +11,7 @@ import {
 } from 'discord.js';
 import { ButtonComponent, Discord } from 'discordx';
 import { createTranscript, ExportReturnType } from 'discord-html-transcripts';
-import { Tickets as ticketData } from '../../Schemas/ticket.js';
-import { GuildDB as setupData } from '../../Schemas/guild.js';
+import { Tickets as ticketData, Guilds as setupData } from '@Schemas';
 
 @Discord()
 export class Tickets {

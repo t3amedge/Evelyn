@@ -1,16 +1,17 @@
-import { send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { EmbedBuilder, GuildMember } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { send } from '@Helpers/loggerUtils.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class GuildMemberAdd {
 	@On({ event: 'guildMemberAdd' })
-	async guildMemberAdd([member]: [GuildMember], client: Evelyn) {
-		if (!(await validate(member.guild.id))) return;
+	@Guard(HasLogsEnabled)
+	async guildMemberAdd([member]: ArgsOf<'guildMemberAdd'>, client: Evelyn) {
+		if (member.partial) await member.fetch();
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
 				name: member.guild.name,
 				iconURL: member.guild.iconURL(),
@@ -31,9 +32,7 @@ export class GuildMemberAdd {
 						(member.user.createdTimestamp / 1000).toString(),
 					)}:R>`,
 				},
-			)
-			.setTimestamp();
-
+			);
 
 		return await send({
 			guild: member.guild.id,

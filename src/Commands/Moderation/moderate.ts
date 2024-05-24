@@ -22,7 +22,8 @@ import {
 	SlashOption,
 } from 'discordx';
 import { Evelyn } from '../../Evelyn.js';
-import { Util } from '../../Utils/Utils/Util.js';
+import { bakeUnixTimestamp } from '../../Utils/Helpers/messageHelpers.js';
+import ms from 'ms';
 
 const { User, String } = ApplicationCommandOptionType;
 const { Short } = TextInputStyle;
@@ -37,7 +38,7 @@ export class Moderate {
 	@Slash({
 		name: 'moderate',
 		description: 'Moderate a user.',
-		defaultMemberPermissions: ['BanMembers', 'KickMembers'],
+		defaultMemberPermissions: ['BanMembers', 'KickMembers', 'ModerateMembers'],
 	})
 	moderate(
 		@SlashOption({
@@ -181,9 +182,8 @@ export class Moderate {
 		id: 'timeoutModal',
 	})
 	async timeoutModal(interaction: ModalSubmitInteraction) {
-		const util = new Util();
 		const { fields } = interaction;
-		const time = util.msToTime(fields.getTextInputValue('timeout_time'));
+		const time = ms(fields.getTextInputValue('timeout_time'));
 		this.embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
 		if (isNaN(time))
@@ -204,7 +204,7 @@ export class Moderate {
 					.setDescription(
 						`${
 							this.target
-						} has been timed out for ${util.convertToUnixTimestamp(time)}.`,
+						} has been timed out for ${bakeUnixTimestamp(time)}.`,
 					)
 					.addFields({
 						name: 'Reason',

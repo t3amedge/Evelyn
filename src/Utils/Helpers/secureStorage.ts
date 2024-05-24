@@ -1,7 +1,9 @@
+import { singleton } from 'tsyringe';
+import { Evelyn } from '@Evelyn';
 import cryptr from 'cryptr';
-import { Evelyn } from '../../Evelyn.js';
 
 /** The Secure Storage module of Evelyn that keeps your shit safe. */
+@singleton()
 export class SecureStorage {
 	/**
 	 * Encrypts the provided value.

@@ -1,12 +1,6 @@
-import {
-	ChannelType,
-	ChatInputCommandInteraction,
-	EmbedBuilder,
-	Guild,
-	Role,
-} from 'discord.js';
+import { ChannelType, ChatInputCommandInteraction, EmbedBuilder, Guild, Role } from 'discord.js';
+import { bakeUnixTimestamp } from '@Helpers/messageHelpers.js';
 import { Discord, Slash, SlashGroup } from 'discordx';
-import { Util } from '../../Utils/Utils/Util.js';
 
 @Discord()
 @SlashGroup({
@@ -20,9 +14,8 @@ export class ServerInfo {
 		description: 'Shows information about the current server.',
 	})
 	info(interaction: ChatInputCommandInteraction) {
-		const { convertToUnixTimestamp } = new Util();
 		const { guild } = interaction;
-		const definedGuild = guild as Guild;
+
 		const {
 			name,
 			description,
@@ -38,13 +31,13 @@ export class ServerInfo {
 			premiumTier,
 			premiumSubscriptionCount,
 			iconURL,
-		} = definedGuild;
+		} = guild;
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
 		const botCount = members.cache.filter((member) => member.user.bot).size;
 		const getChannelTypeSize = (type: ChannelType[]) =>
 			channels.cache.filter((channel) => type.includes(channel.type)).size;
-		const createdTime = convertToUnixTimestamp(createdTimestamp);
+		const createdTime = bakeUnixTimestamp(createdTimestamp);
 
 		return interaction.reply({
 			embeds: [

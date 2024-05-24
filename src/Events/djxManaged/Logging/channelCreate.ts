@@ -1,21 +1,23 @@
-import { getAuditLog, send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { AuditLogEvent, EmbedBuilder, GuildChannel } from 'discord.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { getAuditLog, send } from '@Helpers/loggerUtils.js';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { AuditLogEvent } from 'discord.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class channelCreate {
     @On({ event: 'channelCreate' })
-	async channelCreate([channel]: [GuildChannel], client: Evelyn) {
-		if (!await validate(channel.guildId)) return;
+	@Guard(HasLogsEnabled)
+	async channelCreate([channel]: ArgsOf<'channelCreate'>, client: Evelyn) {
+		if (channel.partial) await channel.fetch();
 
 		const audit = await getAuditLog({
 			type: AuditLogEvent.ChannelCreate,
 			guild: channel.guild,
 		});
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
 				name: channel.guild.name,
 				iconURL: channel.guild.iconURL(),
@@ -34,8 +36,7 @@ export class channelCreate {
 					name: '🔹 | Created by',
 					value: `> ${audit.executor}`,
 				},
-			)
-			.setTimestamp();
+			);
 
 		return await send({
 			guild: channel.guildId,

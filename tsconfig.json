@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"baseUrl": "./",
 		"lib": ["ESNext"],
 		"module": "ESNext",
 		"moduleResolution": "node",
@@ -14,6 +15,19 @@
 		"allowSyntheticDefaultImports": true,
 		"skipLibCheck": true,
 		"skipDefaultLibCheck": true,
-		"declaration": true
+		"declaration": true,
+
+		"paths": {
+			"@/*": ["./src/*"],
+			
+			"@Checkers/*": ["./src/Utils/Checkers/*"],
+			"@Helpers/*": ["./src/Utils/Helpers/*"],
+
+			"@Schemas": ["./src/Schemas"],
+			"@Config": ["./src/config"],
+			"@Services": ["./src/Services"],
+			"@Evelyn": ["./src/Evelyn"],
+			"@Guards": ["./src/Guards"]
+		}
 	}
 }

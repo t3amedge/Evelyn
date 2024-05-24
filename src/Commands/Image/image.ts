@@ -5,7 +5,7 @@ import {
 } from 'discord.js';
 import { Discord, Slash, SlashOption, SlashChoice, Guard } from 'discordx';
 import { RateLimit, TIME_UNIT } from '@discordx/utilities';
-import { NekoAPI } from '../../Utils/APIs/nekoAPI.js';
+import { NekoAPI } from '@/Utils/APIs/nekoAPI.js';
 
 @Discord()
 export class Image {

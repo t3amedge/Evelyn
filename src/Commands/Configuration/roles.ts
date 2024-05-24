@@ -19,7 +19,7 @@ import {
 	SlashGroup,
 	SlashOption,
 } from 'discordx';
-import { RRoles as DB } from '../../Schemas/roles.js';
+import { Roles as DB } from '@Schemas';
 
 @Discord()
 @SlashGroup({

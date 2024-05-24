@@ -1,14 +1,10 @@
 import { Node } from '@shadowrunners/automata';
-import colors from '@colors/colors';
+import { Evelyn } from '@Evelyn';
 
 export default class NodeConnect {
 	name = 'nodeConnect';
 
-	execute(node: Node) {
-		console.log(
-			`${colors.magenta('Lavalink')} ${colors.white(
-				`· Connected to node ${node.options.name}.`,
-			)}`,
-		);
+	execute(node: Node, client: Evelyn) {
+		client.evieLogger.info(`[Lavalink] Connected to node ${node.options.name}.`);
 	}
 }

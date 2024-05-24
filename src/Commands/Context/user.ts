@@ -9,14 +9,12 @@ import {
 	MessageContextMenuCommandInteraction,
 	ButtonInteraction,
 } from 'discord.js';
-import { Util } from '../../Utils/Utils/Util.js';
+import { bakeUnixTimestamp } from '@Helpers/messageHelpers.js';
 
 const { User, Message } = ApplicationCommandType;
 
 @Discord()
 export class UserInformation {
-	private util: Util;
-
 	@ContextMenu({ name: 'User Information', type: User })
 	@ContextMenu({ name: 'User Information', type: Message })
 	async userInfo(
@@ -29,16 +27,14 @@ export class UserInformation {
 		const { user, joinedTimestamp } = target;
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
-		this.util = new Util();
-
 		await Promise.all([
 			user.fetch(),
 			user.avatarURL(),
 			user.bannerURL({ size: 512 }),
 		]);
 
-		const createdTime = this.util.convertToUnixTimestamp(user.createdTimestamp);
-		const joinedTime = this.util.convertToUnixTimestamp(joinedTimestamp);
+		const createdTime = bakeUnixTimestamp(user.createdTimestamp);
+		const joinedTime = bakeUnixTimestamp(joinedTimestamp);
 
 		const actionRow = new ActionRowBuilder<ButtonBuilder>().setComponents(
 			new ButtonBuilder()

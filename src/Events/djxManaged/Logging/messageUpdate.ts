@@ -1,16 +1,19 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Message } from 'discord.js';
-import { send, validate } from '../../../Utils/Helpers/loggerUtils.js';
-import { Evelyn } from '../../../Evelyn.js';
-import { Discord, On } from 'discordx';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { ArgsOf, Discord, Guard, On } from 'discordx';
+import { EvieEmbed } from '@/Utils/EvieEmbed.js';
+import { send } from '@Helpers/loggerUtils.js';
+import { HasLogsEnabled } from '@Guards';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 export class MessageUpdate {
 	@On({ event: 'messageUpdate' })
-	async messageUpdate(message: Message, client: Evelyn) {
+	@Guard(HasLogsEnabled)
+	async messageUpdate(message: ArgsOf<'messageUpdate'>, client: Evelyn) {
 		const oldMessage = message[0];
 		const newMessage = message[1];
 
-		if (oldMessage.author?.bot && !(await validate(oldMessage.guild))) return;
+		if (oldMessage.author?.bot) return;
 
 		const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
@@ -19,35 +22,34 @@ export class MessageUpdate {
 				.setURL(oldMessage?.url),
 		);
 
-		const embed = new EmbedBuilder()
-			.setColor('Blurple')
+		const embed = EvieEmbed()
 			.setAuthor({
-				name: message.guild.name,
-				iconURL: message.guild.iconURL(),
+				name: oldMessage.guild.name,
+				iconURL: oldMessage.guild.iconURL(),
 			})
 			.setTitle('Message Updated')
-			.addFields({
-				name: '🔹 | Old Content',
-				value: `> ${oldMessage.content}`,
-			},
-			{
-				name: '🔹 | New Content',
-				value: `> ${newMessage.content}`,
-			},
-			{
-				name: '🔹 | ID',
-				value: `> ${oldMessage.id}`,
-			},
-			{
-				name: '🔹 | Updated by',
-				value: `> ${newMessage.author}>`,
-			},
-			)
-			.setTimestamp();
+			.addFields(
+				{
+					name: '🔹 | Old Content',
+					value: `> ${oldMessage.content}`,
+				},
+				{
+					name: '🔹 | New Content',
+					value: `> ${newMessage.content}`,
+				},
+				{
+					name: '🔹 | ID',
+					value: `> ${oldMessage.id}`,
+				},
+				{
+					name: '🔹 | Updated by',
+					value: `> ${newMessage.author}>`,
+				},
+			);
 
 		if (oldMessage.content !== newMessage.content)
 			return await send({
-				guild: message.guildId,
+				guild: oldMessage.guildId,
 				client,
 				embed,
 				components: actionRow,

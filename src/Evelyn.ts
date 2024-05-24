@@ -1,12 +1,14 @@
-import { Client } from 'discordx';
-import colors from '@colors/colors';
-import { config } from './config.js';
+import '@abraham/reflection';
+import { Client, DIService } from 'discordx';
+import { BotConfig, config } from '@Config';
+import { container } from 'tsyringe';
 import { Manager } from '@shadowrunners/automata';
 import { dirname, importx } from '@discordx/importer';
-import { GatewayIntentBits, Options } from 'discord.js';
-import { BotConfig } from './Interfaces/Interfaces.js';
-import { fileLoad } from './Utils/Utils/fileLoader.js';
-// import { crashReporter } from './functions/crashReport.js';
+import { GatewayIntentBits, Options, Partials } from 'discord.js';
+import { fileLoad } from '@Helpers/fileLoader.js';
+import { DatabaseType, Giveaways } from 'discord-giveaways-super';
+import { tsyringeDependencyRegistryEngine } from '@discordx/di';
+import Logger from '@ptkdev/logger';
 // import Economy from 'discord-economy-super/mongodb/src/index.js';
 
 const {
@@ -15,6 +17,7 @@ const {
 	GuildMembers,
 	GuildModeration,
 	GuildEmojisAndStickers,
+	GuildMessageReactions,
 	GuildVoiceStates,
 	MessageContent,
 	DirectMessages,
@@ -25,7 +28,9 @@ export class Evelyn extends Client {
 	// To implement later. This shit takes too much time.
 	// public economy: Economy<boolean>;
 	public manager: Manager;
+	public giveaways: Giveaways<DatabaseType.MONGODB>;
 	private client: Client;
+	public evieLogger: Logger;
 
 	constructor() {
 		super({
@@ -36,43 +41,73 @@ export class Evelyn extends Client {
 				GuildModeration,
 				GuildVoiceStates,
 				GuildEmojisAndStickers,
+				GuildMessageReactions,
 				MessageContent,
 				DirectMessages,
 			],
-			silent: false,
+			partials: [
+				Partials.Reaction,
+				Partials.Message,
+			],
+			silent: config.debug.logs.disableDX,
 			makeCache: Options.cacheWithLimits({
 				...Options.DefaultMakeCacheSettings,
-				ReactionManager: 0,
 				GuildInviteManager: 0,
 				GuildScheduledEventManager: 0,
 				PresenceManager: 0,
-				ReactionUserManager: 0,
+				// ReactionUserManager: 0,
 				StageInstanceManager: 0,
 			}),
 			sweepers: {
 				...Options.DefaultSweeperSettings,
 				messages: {
-					interval: 43200, // Clear the message cache every 12 hours.
+					// Clear the message cache every 12 hours.
+					interval: 43200,
 					filter: () => (message) =>
-						message.author.bot && message.author.id !== this.client.user.id, // Removes all bots.
+						// Removes all bots.
+						message.author.bot && message.author.id !== this.client.user.id,
 				},
 			},
 		});
 
 		this.config = config;
+		this.client = this;
 
 		this.manager = new Manager({
 			nodes: this.config.music.nodes,
 			reconnectTries: 3,
-			reconnectTimeout: 10000,
+			reconnectTimeout: 5000,
 			resumeStatus: true,
 			resumeTimeout: 5000,
 			defaultPlatform: 'dzsearch',
 		});
 
-		this.client = this;
+		this.giveaways = new Giveaways(this.client, {
+			database: DatabaseType.MONGODB,
+			connection: {
+				connectionURI: this.config.database,
+				collectionName: 'Giveaways',
+				dbName: 'test',
+			},
+			debug: this.config.debug.logs.disableGiveawaysLogs,
+		});
 
-		// process.on('unhandledRejection', (err) => crashReporter(client, err));
+		this.evieLogger = new Logger({
+			language: 'en',
+			colors: true,
+			debug: true,
+			info: true,
+			warning: true,
+			error: true,
+			sponsor: true,
+			type: 'log',
+			rotate: {
+				size: '10M',
+				encoding: 'utf8',
+			},
+		});
+
+		// TODO: Replace this with Sentry stuff.
 		process.on('unhandledRejection', (err) => console.log(err));
 		process.on('unhandledException', (err) => console.log(err));
 	}
@@ -92,19 +127,36 @@ export class Evelyn extends Client {
 
 			client.manager.on(event.name, execute);
 
-			console.log(
-				`${colors.magenta('Automata')} ${colors.white(
-					'· Loaded',
-				)} ${colors.green(`${event.name}.ts`)}`,
-			);
+			this.evieLogger.info(`[Automata] Loaded ${event.name}.ts`);
 		}
 	}
 
 	/** Imports all commands and events then launches a new instance of the bot. */
 	public async launch() {
+		DIService.engine = tsyringeDependencyRegistryEngine.setInjector(container);
+
 		await importx(
 			`${dirname(import.meta.url)}/{Events/djxManaged,Commands}/**/*.{ts,js}`,
 		);
+
+		if (config.debug.telemetry.enabled) {
+			const { addTracingExtensions, init } = await import('@sentry/browser');
+			const { ProfilingIntegration } = await import('@sentry/profiling-node');
+
+			addTracingExtensions();
+			init({
+				dsn: this.config.debug.telemetry.dsn,
+				tracesSampleRate: 1.0,
+				profilesSampleRate: 1.0,
+				integrations: [
+					new ProfilingIntegration(),
+				],
+			});
+
+			this.evieLogger.info('[Telemetry] Sentry has been successfully initialized.');
+		}
+
+		container.registerInstance(Evelyn, this.client);
 
 		await this.loadMusic(this);
 		await this.client.login(this.config.token);

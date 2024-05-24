@@ -4,9 +4,9 @@ import {
 	ApplicationCommandOptionType,
 } from 'discord.js';
 import { Discord, Slash, SlashGroup, SlashOption } from 'discordx';
-import { Playlists as DB } from '../../Schemas/playlist.js';
-import { Util } from '../../Utils/Utils/Util.js';
-import { Evelyn } from '../../Evelyn.js';
+import { Playlists as DB } from '@Schemas';
+import { embedPages, formatTime } from '@Helpers/messageHelpers.js';
+import { Evelyn } from '@Evelyn';
 
 @Discord()
 @SlashGroup({
@@ -184,7 +184,6 @@ export class Playlist {
 			interaction: ChatInputCommandInteraction,
 	) {
 		const { user } = interaction;
-		const util = new Util(interaction);
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
 		await interaction.deferReply();
@@ -212,7 +211,7 @@ export class Playlist {
 			const index = i + 1;
 			const title = track.title;
 			const url = track.uri;
-			const length = util.formatTime(track.duration);
+			const length = formatTime(track.duration);
 
 			tracks.push(`${index} • **[${title}](${url})** • [${length}]`);
 		}
@@ -224,7 +223,7 @@ export class Playlist {
 			embeds.push(embed);
 		}
 
-		return util.embedPages(embeds);
+		return embedPages(embeds, interaction);
 	}
 
 	@Slash({
@@ -233,7 +232,6 @@ export class Playlist {
 	})
 	async list(interaction: ChatInputCommandInteraction) {
 		const { user } = interaction;
-		const util = new Util(interaction);
 		const pData = await DB.find({ userID: user.id });
 		const embed = new EmbedBuilder().setColor('Blurple').setTimestamp();
 
@@ -262,7 +260,7 @@ export class Playlist {
 			embeds.push(embed);
 		}
 
-		return util.embedPages(embeds);
+		return embedPages(embeds, interaction);
 	}
 
 	@Slash({

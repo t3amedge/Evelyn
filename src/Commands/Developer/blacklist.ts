@@ -4,9 +4,8 @@ import {
 	EmbedBuilder,
 } from 'discord.js';
 import { Discord, Slash, SlashOption, SlashGroup, Guild } from 'discordx';
-import { UserBlacklist as UB } from '../../Schemas/userBlacklist.js';
-import { GuildDB as DB } from '../../Schemas/guild.js';
-import { config } from '../../config.js';
+import { UserBlacklists as UB, Guilds as DB } from '@Schemas';
+import { config } from '@Config';
 
 @Discord()
 @Guild(config.debug.devGuild)
