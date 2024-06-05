@@ -1,7 +1,8 @@
 import {
 	ApplicationCommandType,
-	MessageContextMenuCommandInteraction, 
-	UserContextMenuCommandInteraction
+	type MessageContextMenuCommandInteraction, 
+	type UserContextMenuCommandInteraction,
+	type User,
 } from "discord.js";
 import { makeTimestamp } from "src/utils/makeTimestamp.js";
 import { BaseEmbed } from "../../utils/embeds.js";
@@ -17,9 +18,16 @@ export class ContextUserInformation {
     @ContextMenu({ name: 'User Information', type: ApplicationCommandType.User })
     @ContextMenu({ name: 'User Information', type: ApplicationCommandType.Message })
     async execute(interaction: UserContextMenuCommandInteraction | MessageContextMenuCommandInteraction) {
-        const { guild, targetId } = interaction;
-        const guildUser = await guild?.members.fetch(targetId);
-        const user = await this.client.users.fetch(targetId);
+		let user: User;
+        const { guild } = interaction;
+
+		if (interaction.isUserContextMenuCommand()) {
+			user = await this.client.users.fetch(interaction.targetId);
+		} else {
+			user = await this.client.users.fetch(interaction.targetMessage.author.id);
+		}
+
+		const guildUser = await guild?.members.fetch(user.id);
 
 		return interaction.reply({
 			embeds: [

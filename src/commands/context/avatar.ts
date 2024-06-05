@@ -1,7 +1,8 @@
 import {
 	ApplicationCommandType,
-	MessageContextMenuCommandInteraction, 
-	UserContextMenuCommandInteraction
+	type MessageContextMenuCommandInteraction, 
+	type UserContextMenuCommandInteraction,
+	type User,
 } from "discord.js";
 import { BaseEmbed } from "../../utils/embeds.js";
 import { ContextMenu, Discord } from "discordx";
@@ -16,8 +17,13 @@ export class ContextAvatar {
     @ContextMenu({ name: 'Avatar', type: ApplicationCommandType.User })
     @ContextMenu({ name: 'Avatar', type: ApplicationCommandType.Message })
     async execute(interaction: UserContextMenuCommandInteraction | MessageContextMenuCommandInteraction) {
-        const { targetId } = interaction;
-        const user = await this.client.users.fetch(targetId);
+		let user: User;
+
+		if (interaction.isUserContextMenuCommand()) {
+			user = await this.client.users.fetch(interaction.targetId);
+		} else {
+			user = await this.client.users.fetch(interaction.targetMessage.author.id);
+		}
 
 		return interaction.reply({
 			embeds: [
