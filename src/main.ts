@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { type EvelynConfigurationOptions, config } from './config.js';
 import { dirname, importx } from "@discordx/importer";
-import { GatewayIntentBits } from "discord.js";
+import { GatewayIntentBits, Partials } from "discord.js";
 import { Client, DIService } from "discordx";
 import { tsyringeDependencyRegistryEngine } from '@discordx/di';
 import { container } from 'tsyringe';
@@ -10,9 +10,22 @@ import { MikroORM } from '@mikro-orm/mongodb';
 
 export class Evelyn extends Client {
     /** The configuration settings of Evelyn. */
-    public config: EvelynConfigurationOptions;
+    public config: EvelynConfigurationOptions = config;
     /** The Evelyn logger powered by @ptkdev/logger. */
-    public logging: Logger;
+    public logging: Logger = new Logger({
+        language: 'en',
+        colors: true,
+        debug: true,
+        info: true,
+        warning: true,
+        error: true,
+        sponsor: true,
+        type: 'log',
+        rotate: {
+            size: '10M',
+            encoding: 'utf8',
+        },
+    });;
     /** The ORM. */
     public orm!: MikroORM;
 
@@ -26,27 +39,15 @@ export class Evelyn extends Client {
                 GatewayIntentBits.GuildVoiceStates,
                 GatewayIntentBits.MessageContent,
             ],
+            partials: [
+                Partials.User,
+                Partials.Channel,
+                Partials.Message,
+            ],
             silent: config.debug?.enableDiscordXDebugLogs ?? false,
             // Reimplement cache options from old code.
             // makeCache:
         });
-
-        this.config = config;
-
-        this.logging = new Logger({
-			language: 'en',
-			colors: true,
-			debug: true,
-			info: true,
-			warning: true,
-			error: true,
-			sponsor: true,
-			type: 'log',
-			rotate: {
-				size: '10M',
-				encoding: 'utf8',
-			},
-		});
 
         // TODO: Reimplement music manager.
 
