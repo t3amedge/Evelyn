@@ -18,6 +18,7 @@
 
     "paths": {
       "@Evelyn": ["./src/main.ts"],
+      "@Guards": ["./src/guards"],
     }
   },
   "exclude": ["build", "node_modules"]
