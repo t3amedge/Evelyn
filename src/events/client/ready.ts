@@ -11,6 +11,7 @@ export class ReadyEvent {
   async ready(): Promise<void> {
     this.client.logging.info(`Signed in as ${this.client.user?.tag}.`)
 
+    await this.client.LLManager.init({ ...this.client.user! });
     await this.client.initApplicationCommands();
   }
 }
