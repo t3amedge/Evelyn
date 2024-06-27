@@ -29,13 +29,18 @@
     "tsyringe": "^4.8.0"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.5.0",
     "@types/node": "^20.14.8",
     "@types/superagent": "^8.1.7",
+    "eslint": "^9.5.0",
+    "globals": "^15.6.0",
     "nodemon": "^3.1.4",
     "prettier": "^3.3.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.15.7",
-    "typescript": "5.5.2"
+    "typescript": "5.5.2",
+    "typescript-eslint": "^7.14.1"
   },
   "engines": {
     "node": ">=16.0.0",
