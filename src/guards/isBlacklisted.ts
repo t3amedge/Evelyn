@@ -3,16 +3,16 @@ import { Evelyn } from '@Evelyn';
 import { GuardFunction, ArgsOf } from 'discordx';
 import { Blacklist } from 'src/entities/blacklist.entity';
 
-import type {
-    ButtonInteraction,
-    ChannelSelectMenuInteraction,
-    CommandInteraction,
-    ContextMenuCommandInteraction,
-    MentionableSelectMenuInteraction,
-    ModalSubmitInteraction,
-    RoleSelectMenuInteraction,
-    StringSelectMenuInteraction,
-    UserSelectMenuInteraction
+import {
+    type ButtonInteraction,
+    type ChannelSelectMenuInteraction,
+    type CommandInteraction,
+    type ContextMenuCommandInteraction,
+    type MentionableSelectMenuInteraction,
+    type ModalSubmitInteraction,
+    type RoleSelectMenuInteraction,
+    type StringSelectMenuInteraction,
+    type UserSelectMenuInteraction
 } from 'discord.js';
 import { ErrorEmbed } from 'src/utils/embeds';
 import { Guilds } from 'src/entities/guild.entity';
@@ -29,6 +29,8 @@ export const isBlacklisted: GuardFunction<ArgsOf<"interactionCreate">> = async (
         | RoleSelectMenuInteraction
         | StringSelectMenuInteraction
         | UserSelectMenuInteraction;
+
+    if (int.isAutocomplete()) return;
 
     const client = _client as Evelyn;
 
