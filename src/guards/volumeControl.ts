@@ -1,4 +1,4 @@
-import { ButtonInteraction, ChatInputCommandInteraction, CommandInteraction } from 'discord.js';
+import { ButtonInteraction, ChatInputCommandInteraction } from 'discord.js';
 import { GuardFunction, ArgsOf } from 'discordx';
 import { ErrorEmbed } from 'src/utils/embeds';
 import { Evelyn } from '@Evelyn';
