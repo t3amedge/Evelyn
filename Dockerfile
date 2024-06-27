@@ -1,3 +1,6 @@
+## auto generated
+## will be fixed later
+
 ## build runner
 FROM node:lts-alpine as build-runner
 
@@ -8,7 +11,7 @@ WORKDIR /tmp/app
 COPY package.json .
 
 # Install dependencies
-RUN npm install
+RUN npm install --ignore-scripts
 
 # Move source files
 COPY src ./src
@@ -27,7 +30,7 @@ WORKDIR /app
 COPY --from=build-runner /tmp/app/package.json /app/package.json
 
 # Install dependencies
-RUN npm install --omit=dev
+RUN npm install --omit=dev ---ignore-scripts
 
 # Move build files
 COPY --from=build-runner /tmp/app/build /app/build
