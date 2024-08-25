@@ -627,7 +627,6 @@ export class AutoModConfiguration {
         triggerType,
         action,
         submodule,
-        alertsChannel,
     }: {
         interaction: ChatInputCommandInteraction,
         name: string,
@@ -635,7 +634,6 @@ export class AutoModConfiguration {
         triggerMetadata?: AutoModerationTriggerMetadataOptions | undefined,
         action: string,
         submodule: AutoModSubmodules,
-        alertsChannel?: string,
     }) {
         const { guild, channel } = interaction;
         const data = await this.guild.getFeature(guild?.id as string, 'automod');
@@ -649,11 +647,11 @@ export class AutoModConfiguration {
             
         const actions: AutoModerationActionOptions[] = [];
 
-        if (alertsChannel) {
+        if (data?.automod.alertsChannel) {
             actions.push({
                 type: AutoModerationActionType.SendAlertMessage,
                 metadata: {
-                    channel: alertsChannel,
+                    channel: data.automod.alertsChannel,
                 },
             });
         };
