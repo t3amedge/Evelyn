@@ -1,14 +1,14 @@
-import { Evelyn } from "@Evelyn";
-import { ApplicationCommandOptionType, AutoModerationActionOptions, AutoModerationActionType, AutoModerationRuleEventType, AutoModerationRuleKeywordPresetType, AutoModerationRuleTriggerType, ChannelType, ChatInputCommandInteraction, TextChannel } from "discord.js";
+import { ApplicationCommandOptionType, AutoModerationActionOptions, AutoModerationActionType, AutoModerationRuleEventType, AutoModerationRuleKeywordPresetType, AutoModerationRuleTriggerType, AutoModerationTriggerMetadataOptions, ChannelType, ChatInputCommandInteraction, Role, TextChannel } from "discord.js";
 import { Discord, Guild, Slash, SlashChoice, SlashGroup, SlashOption } from "discordx";
-import { GuildDataManager } from "src/services/guilds";
 import { BaseEmbed, ErrorEmbed } from "src/utils/embeds";
+import { GuildDataManager } from "src/services/guilds";
 import { inject, injectable } from "tsyringe";
 
 @Discord()
 @injectable()
 @SlashGroup({ description: "Tailor AutoMod to your needs.", name: 'automod', defaultMemberPermissions: 'Administrator' })
-@SlashGroup({ description: "Configure the anti NSFW invite bots module.", name: 'nsfwbots', root: 'automod' })
+@SlashGroup({ description: "Manage an AutoMod rule.", name: "manage", root: "automod" })
+@SlashGroup({ description: "Configure the anti NSFW invite bots submodule.", name: 'nsfwbots', root: 'automod' })
 @SlashGroup({ description: "Configure the anti invite links submodule.", name: 'invitelinks', root: 'automod' })
 @SlashGroup({ description: "Configure the anti profanity submodule.", name: 'profanity', root: 'automod' })
 @SlashGroup({ description: "Configure the anti sexual content submodule.", name: 'sexualcontent', root: 'automod' })
@@ -19,10 +19,7 @@ import { inject, injectable } from "tsyringe";
 // only temporary so cmd updates faster
 @Guild('925125324616908850')
 export class AutoModConfiguration {
-    constructor(
-        @inject(Evelyn) private readonly client: Evelyn,
-        @inject(GuildDataManager) private readonly guild: GuildDataManager,
-    ) {}
+    constructor(@inject(GuildDataManager) private readonly guild: GuildDataManager) {}
 
     @Slash({
         name: 'alertschannel',
@@ -44,18 +41,185 @@ export class AutoModConfiguration {
             'automod.alertsChannel': channel.id,
         });
 
-        return interaction.reply({ 
+        if (!interaction.replied) return interaction.reply({ 
             embeds: [BaseEmbed().setDescription(`> Channel set. All AutoMod alerts will be sent in ${channel}.`)],
             ephemeral: true,
         });
     }
- 
+
+    @Slash({
+        name: 'exemptchannel',
+        description: 'Add/remove a channel exempt from the specified AutoMod rule.',
+    })
+    @SlashGroup('manage', 'automod')
+    async automod_exemptchannel(
+        @SlashChoice({ name: 'Add', value: 'add' })
+        @SlashChoice({ name: 'Remove', value: 'remove' })
+        @SlashOption({
+            name: 'action',
+            description: 'The action that will be taken.',
+            type: ApplicationCommandOptionType.String,
+            required: true
+        })
+        action: string,
+
+        @SlashChoice({ name: 'Anti NSFW Bots', value: 'nsfwinvitelinks' })
+        @SlashChoice({ name: 'Anti Invite Links', value: 'invitelinks' })
+        @SlashChoice({ name: 'Anti Profanity', value: 'profanity' })
+        @SlashChoice({ name: 'Anti Sexual Content', value: 'sexualcontent' })
+        @SlashChoice({ name: 'Anti Spam', value: 'spam' })
+        @SlashChoice({ name: 'Anti Zalgo', value: 'zalgo' })
+        @SlashChoice({ name: 'Anti Emoji Spam', value: 'emojispam' })
+        @SlashChoice({ name: 'Anti Keyword (Custom)', value: 'customkeyword' })
+        @SlashOption({
+            name: 'submodule',
+            description: 'The submodule you\'d like to manage.',
+            type: ApplicationCommandOptionType.String,
+            required: true,
+        })
+        submodule: AutoModSubmodules,
+
+        @SlashOption({
+            name: 'channel',
+            description: 'The channel exempt from the selected AutoMod rule.',
+            type: ApplicationCommandOptionType.Channel,
+            channelTypes: [ChannelType.GuildText],
+            required: true,
+        })
+        channel: TextChannel,
+
+        interaction: ChatInputCommandInteraction
+    ) {
+        const data = await this.guild.getFeature(interaction.guildId as string, 'automod');
+        const autoModerationRules = await interaction.guild?.autoModerationRules.fetch();
+        const rule = autoModerationRules?.map((rule) => rule).filter((rule) => rule.id === data?.automod[submodule].ruleId)[0];
+
+        switch (action) {
+            case 'add': {
+                if (rule?.exemptChannels.has(channel.id)) return interaction.reply({
+                    embeds: [ErrorEmbed().setDescription('> This channel is already exempt from this rule.')],
+                    ephemeral: true,
+                });
+        
+                rule?.edit({
+                    exemptChannels: [channel, ...rule.exemptChannels.map((ch) => ch.id)],
+                    reason: 'A channel has been exempted from this rule via /automod manage exemptchannel add.'
+                });
+        
+                return interaction.reply({ 
+                    embeds: [BaseEmbed().setDescription('> The selected channel is no longer exempt from the AutoMod rule.')],
+                    ephemeral: true,
+                });
+            }
+
+            case 'remove': {
+                if (!rule?.exemptChannels.has(channel.id)) return interaction.reply({
+                    embeds: [ErrorEmbed().setDescription('> This channel isn\'t exempted from this rule.')],
+                    ephemeral: true,
+                });
+
+                rule?.edit({
+                    exemptChannels: rule.exemptChannels.filter((exChannel) => exChannel.id !== channel.id),
+                    reason: 'A channel has been removed from the exemptions of this rule via /automod manage exemptchannel remove.'
+                });
+        
+                return interaction.reply({ 
+                    embeds: [BaseEmbed().setDescription('> The selected channel is now exempt from the AutoMod rule.')],
+                    ephemeral: true,
+                });
+            }
+        }
+    }
+
+    @Slash({
+        name: 'exemptrole',
+        description: 'Add/remove a role exempt from the specified AutoMod rule.',
+    })
+    @SlashGroup('manage', 'automod')
+    async automod_roleexempt(
+        @SlashChoice({ name: 'Add', value: 'add' })
+        @SlashChoice({ name: 'Remove', value: 'remove' })
+        @SlashOption({
+            name: 'action',
+            description: 'The action that will be taken.',
+            type: ApplicationCommandOptionType.String,
+            required: true
+        })
+        action: string,
+
+        @SlashChoice({ name: 'Anti NSFW Bots', value: 'nsfwinvitelinks' })
+        @SlashChoice({ name: 'Anti Invite Links', value: 'invitelinks' })
+        @SlashChoice({ name: 'Anti Profanity', value: 'profanity' })
+        @SlashChoice({ name: 'Anti Sexual Content', value: 'sexualcontent' })
+        @SlashChoice({ name: 'Anti Spam', value: 'spam' })
+        @SlashChoice({ name: 'Anti Zalgo', value: 'zalgo' })
+        @SlashChoice({ name: 'Anti Emoji Spam', value: 'emojispam' })
+        @SlashChoice({ name: 'Anti Keyword (Custom)', value: 'customkeyword' })
+        @SlashOption({
+            name: 'submodule',
+            description: 'The submodule you\'d like to manage.',
+            type: ApplicationCommandOptionType.String,
+            required: true,
+        })
+        submodule: AutoModSubmodules,
+
+        @SlashOption({
+            name: 'role',
+            description: 'The role exempt from the selected AutoMod rule.',
+            type: ApplicationCommandOptionType.Role,
+            required: true,
+        })
+        role: Role,
+
+        interaction: ChatInputCommandInteraction
+    ) {
+        const data = await this.guild.getFeature(interaction.guildId as string, 'automod');
+        const autoModerationRules = await interaction.guild?.autoModerationRules.fetch();
+        const rule = autoModerationRules?.map((rule) => rule).filter((rule) => rule.id === data?.automod[submodule].ruleId)[0];
+
+        switch (action) {
+            case 'add': {
+                if (rule?.exemptRoles.has(role.id)) return interaction.reply({
+                    embeds: [ErrorEmbed().setDescription('> This role is already exempt from this rule.')],
+                    ephemeral: true,
+                });
+        
+                rule?.edit({
+                    exemptRoles: [role, ...rule.exemptRoles.map((rl) => rl.id)],
+                    reason: 'A role has been exempted from this rule via /automod manage exemptrole add.'
+                });
+        
+                return interaction.reply({ 
+                    embeds: [BaseEmbed().setDescription('> The selected role is now exempt from the AutoMod rule.')],
+                    ephemeral: true,
+                });
+            }
+
+            case 'remove': {
+                if (!rule?.exemptRoles.has(role.id)) return interaction.reply({
+                    embeds: [ErrorEmbed().setDescription('> This role isn\'t exempted from this rule.')],
+                    ephemeral: true,
+                });
+
+                rule?.edit({
+                    exemptRoles: rule.exemptRoles.filter((exRole) => exRole.id !== role.id),
+                    reason: 'A role has been removed from the exemptions of this rule via /automod manage exemptrole remove.'
+                });
+        
+                return interaction.reply({ 
+                    embeds: [BaseEmbed().setDescription('> The selected role has been removed from the AutoMod rule exemptions.')],
+                    ephemeral: true,
+                });
+            }
+        }
+    }
+
     @Slash({
         name: 'enable',
         description: 'Enables the anti invite links submodule.' 
     })
     @SlashGroup('invitelinks', 'automod')
-    async automod_invitelinks(
+    async automod_antiinvitelinks_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -65,34 +229,11 @@ export class AutoModConfiguration {
             required: true,
         })
         action: string,
- 
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Invite Links',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.Keyword,
             triggerMetadata: {
                 mentionRaidProtectionEnabled: true,
@@ -101,24 +242,13 @@ export class AutoModConfiguration {
                 // eslint-disable-next-line no-useless-escape
                 regexPatterns: ['(?:https?://)?(?:www.|ptb.|canary.)?(?:dsc\.gg|invite\.gg|discord\.link|(?:discord\.(?:gg|io|me|li|id))|disboard\.org|discord(?:app)?\.(?:com|gg)/(?:invite|servers))/[a-z0-9-_]+'],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                invitelinks: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'invitelinks',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied)  return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -127,31 +257,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti invite links submodule.' 
     })
     @SlashGroup('invitelinks', 'automod')
-    async automod_disableantiinvitelinks(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.invitelinks.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti-invite links submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.invitelinks.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                invitelinks: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_antiinvitelinks_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'invitelinks' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
@@ -160,7 +271,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti NSFW invite bots submodule.' 
     })
     @SlashGroup('nsfwbots', 'automod')
-    async automod_nsfwinvites(
+    async automod_antinsfwinvites_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -170,35 +281,12 @@ export class AutoModConfiguration {
             required: true,
         })
         action: string,
- 
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block NSFW Invite Link Bots',
-            eventType: AutoModerationRuleEventType.MessageSend,
-            triggerType: AutoModerationRuleTriggerType.Keyword,
+            triggerType: AutoModerationRuleTriggerType.KeywordPreset,
             triggerMetadata: {
                 mentionRaidProtectionEnabled: true,
                 // hello dear source code reader, don't remove this, this is here to prevent an eslint warning
@@ -206,24 +294,13 @@ export class AutoModConfiguration {
                 // eslint-disable-next-line no-useless-escape
                 regexPatterns: ['(?i)\b(a[s5]+|t[e3]+en|n[s5]+fw|onlyf[a4]+ns?|n[uü]+d[e3]+s?|s[e3]+xc[a@]+m|n[i1]+tro|g[i1]+rls?|s[e3]+x|[e3]g[i1]+rls?|sn[a@]+p[ch]*at|[s5]+nap|p[o0]+rn|@everyone|@here)\b.*?(?:discord\.gg/|discord\.com/invite/).*?\b'],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                nsfwinvitelinks: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'nsfwinvitelinks',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription('> Rule has been created and enabled.')
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -232,31 +309,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti NSFW invite bots submodule.' 
     })
     @SlashGroup('nsfwbots', 'automod')
-    async automod_nsfwinvites_disable(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.invitelinks.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti-invite links submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.nsfwinvitelinks.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                nsfwinvitelinks: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_antinsfwinvites_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'nsfwinvitelinks' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription('> Rule has been disabled.')
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
@@ -265,7 +323,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti invite links submodule.' 
     })
     @SlashGroup('profanity', 'automod')
-    async automod_profanity(
+    async automod_antiprofanity_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -277,54 +335,21 @@ export class AutoModConfiguration {
         action: string,
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Profanity',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.KeywordPreset,
             triggerMetadata: {
-                mentionRaidProtectionEnabled: true,  
+                mentionRaidProtectionEnabled: true,
                 presets: [AutoModerationRuleKeywordPresetType.Profanity, AutoModerationRuleKeywordPresetType.Slurs],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                profanity: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'profanity',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -333,31 +358,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti profanity submodule.' 
     })
     @SlashGroup('profanity', 'automod')
-    async automod_disableantiprofanity(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.profanity.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti-profanity submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.profanity.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                invitelinks: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_antiprofanity_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'profanity' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
@@ -366,7 +372,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti invite links submodule.' 
     })
     @SlashGroup('sexualcontent', 'automod')
-    async automod_sexualcontent(
+    async automod_antisexualcontent_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -378,54 +384,20 @@ export class AutoModConfiguration {
         action: string,
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Sexual Content',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.KeywordPreset,
             triggerMetadata: {
-                mentionRaidProtectionEnabled: true,  
                 presets: [AutoModerationRuleKeywordPresetType.SexualContent],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                sexualcontent: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'sexualcontent',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -434,31 +406,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti sexual content submodule.' 
     })
     @SlashGroup('sexualcontent', 'automod')
-    async automod_disablesexualcontent(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.profanity.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti sexual content submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.sexualcontent.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                sexualcontent: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_antisexualcontent_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'sexualcontent' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
@@ -467,7 +420,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti spam submodule.' 
     })
     @SlashGroup('spam', 'automod')
-    async automod_spam(
+    async automod_antispam_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -479,50 +432,17 @@ export class AutoModConfiguration {
         action: string,
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Spam',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.Spam,
-            actions,
-            enabled: true,
+            action,
+            submodule: 'spam',
         });
 
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                spam: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
-        });
- 
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -531,31 +451,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti spam submodule.' 
     })
     @SlashGroup('spam', 'automod')
-    async automod_disablespam(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.spam.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti spam submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.spam.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                spam: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_antispam_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'spam' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
@@ -564,7 +465,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti zalgo submodule.' 
     })
     @SlashGroup('zalgo', 'automod')
-    async automod_zalgo(
+    async automod_zalgo_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -576,54 +477,20 @@ export class AutoModConfiguration {
         action: string,
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Zalgo Text',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.Keyword,
             triggerMetadata: {
-                mentionRaidProtectionEnabled: true,
-                regexPatterns: ['\\p{M}{3,}']
+                regexPatterns: ['\\p{M}{3,}'],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                zalgo: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'zalgo',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -632,40 +499,21 @@ export class AutoModConfiguration {
         description: 'Disables the anti zalgo submodule.' 
     })
     @SlashGroup('zalgo', 'automod')
-    async automod_disablezalgo(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        if (!data?.automod.zalgo.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti zalgo submodule is not enabled.')],
-            ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.zalgo.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                zalgo: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
+    async automod_zalgo_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'zalgo' });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
+            ephemeral: true,
         });
     }
 
     @Slash({
         name: 'enable',
-        description: 'Enables the anti zalgo submodule.' 
+        description: 'Enables the anti emoji spam submodule.' 
     })
     @SlashGroup('emojispam', 'automod')
-    async automod_emojispam(
+    async automod_emojispam_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -683,60 +531,22 @@ export class AutoModConfiguration {
             required: true,
         })
         amount: number,
-
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block Emoji Spam',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.Keyword,
             triggerMetadata: {
-                regexPatterns: [
-                    `(?s)((<a?:[a-z_0-9]+:[0-9]+>|\\p{Extended_Pictographic}).*){${
-						amount + 1
-					},}`
-                ]
+                regexPatterns: [`(?s)((<a?:[a-z_0-9]+:[0-9]+>|\\p{Extended_Pictographic}).*){${amount},}`],
             },
-            actions,
-            enabled: true,
+            action,
+            submodule: 'emojispam',
         });
 
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                emojispam: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
-        });
- 
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -745,31 +555,12 @@ export class AutoModConfiguration {
         description: 'Disables the anti emoji spam submodule.' 
     })
     @SlashGroup('emojispam', 'automod')
-    async automod_disableemojispam(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
+    async automod_emojispam_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'emojispam' });
 
-        if (!data?.automod.emojispam.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti emoji spam submodule is not enabled.')],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
             ephemeral: true,
-        });
-
-        await guild?.autoModerationRules.delete(data.automod.emojispam.ruleId, 'AutoMod rule has been disabled.')
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                emojispam: {
-                    enabled: false,
-                    ruleId: null,
-                },
-            },
-        });
- 
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
         });
     }
 
@@ -778,7 +569,7 @@ export class AutoModConfiguration {
         description: 'Enables the anti keyword submodule.' 
     })
     @SlashGroup('customkeyword', 'automod')
-    async automod_customword(
+    async automod_anticustomkeyword_enable(
         @SlashChoice({ name: 'Block Message', value: 'block_message' })
         @SlashChoice({ name: 'Timeout', value: 'timeout' })
         @SlashOption({
@@ -796,56 +587,22 @@ export class AutoModConfiguration {
 			required: true,
 		})
         keyword: string,
-
         interaction: ChatInputCommandInteraction,
     ) {
-        const { guild, channel } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
-
-        const actions: AutoModerationActionOptions[] = [];
- 
-        if (data?.automod.alertsChannel) {
-            actions.push({
-                type: AutoModerationActionType.SendAlertMessage,
-                metadata: {
-                    channel: await guild?.channels.fetch(data?.automod.alertsChannel) as TextChannel,
-                },
-            })
-        };
- 
-        actions.push({
-            type: this.actionTaken(action),
-             
-            metadata: {
-                channel: channel as TextChannel,
-            }
-        });
- 
-        const rule = await guild?.autoModerationRules.create({
+        await this.createRule({
+            interaction,
             name: 'Block a Keyword',
-            eventType: AutoModerationRuleEventType.MessageSend,
             triggerType: AutoModerationRuleTriggerType.Keyword,
             triggerMetadata: {
                 keywordFilter: [keyword],
             },
-            actions,
-            enabled: true,
-        });
-
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                customkeyword: {
-                    enabled: true,
-                    ruleId: rule?.id,
-                },
-            },
+            action,
+            submodule: 'customkeyword',
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully created and activated.')],
+            ephemeral: true,
         });
     }
 
@@ -853,32 +610,103 @@ export class AutoModConfiguration {
         name: 'disable',
         description: 'Disables the anti emoji spam submodule.' 
     })
-    @SlashGroup('customword', 'automod')
-    async automod_disablecustomword(interaction: ChatInputCommandInteraction) {
-        const { guild } = interaction;
-        const data = await this.guild.getFeature(guild?.id as string, 'automod');
+    @SlashGroup('customkeyword', 'automod')
+    async automod_anticustomkeyword_disable(interaction: ChatInputCommandInteraction) {
+        await this.deleteRule({ interaction, submodule: 'customkeyword' });
 
-        if (!data?.automod.customword.enabled) return interaction.reply({
-            embeds: [ErrorEmbed().setDescription('The anti emoji spam submodule is not enabled.')],
+        if (!interaction.replied) return interaction.reply({ 
+            embeds: [BaseEmbed().setDescription('> Rule successfully disabled and removed.')],
             ephemeral: true,
         });
+    }
 
-        await guild?.autoModerationRules.delete(data.automod.customword.ruleId, 'AutoMod rule has been disabled.')
+    private async createRule({
+        interaction,
+        name,
+        triggerMetadata,
+        triggerType,
+        action,
+        submodule,
+        alertsChannel,
+    }: {
+        interaction: ChatInputCommandInteraction,
+        name: string,
+        triggerType: AutoModerationRuleTriggerType,
+        triggerMetadata?: AutoModerationTriggerMetadataOptions | undefined,
+        action: string,
+        submodule: AutoModSubmodules,
+        alertsChannel?: string,
+    }) {
+        const { guild, channel } = interaction;
+        const data = await this.guild.getFeature(guild?.id as string, 'automod');
 
-        await this.guild.update(guild?.id as string, {
-            automod: {
-                customword: {
-                    enabled: false,
-                    ruleId: null,
+        if (data?.automod?.[submodule]?.enabled) {
+            return interaction.reply({
+                embeds: [ErrorEmbed().setDescription('> This rule is already enabled.')],
+                ephemeral: true,
+            });
+        }
+            
+        const actions: AutoModerationActionOptions[] = [];
+
+        if (alertsChannel) {
+            actions.push({
+                type: AutoModerationActionType.SendAlertMessage,
+                metadata: {
+                    channel: alertsChannel,
                 },
+            });
+        };
+ 
+        actions.push({
+            type: this.actionTaken(action),
+             
+            metadata: {
+                channel: channel as TextChannel,
             },
         });
  
-        return interaction.reply({ 
-            embeds: [
-                BaseEmbed()
-                    .setDescription(`> Rule has been created and enabled.`)
-            ],
+        const rule = await guild?.autoModerationRules.create({
+            name,
+            eventType: AutoModerationRuleEventType.MessageSend,
+            triggerType,
+            triggerMetadata,
+            actions,
+            enabled: true,
+        });
+
+        return await this.guild.update(guild?.id as string, {
+            [`automod.${submodule}`]: {
+                enabled: true,
+                ruleId: rule?.id,
+            },
+        });
+    }
+
+    private async deleteRule({
+        interaction,
+        submodule,
+    }: {
+        interaction: ChatInputCommandInteraction,
+        submodule: AutoModSubmodules,
+    }) {
+        const { guild } = interaction;
+        const data = await this.guild.getFeature(guild?.id as string, 'automod');
+
+        if (!data?.automod?.[submodule]?.enabled) {
+            return interaction.reply({
+                embeds: [ErrorEmbed().setDescription('> This rule is already disabled.')],
+                ephemeral: true,
+            });
+        }
+ 
+        await guild?.autoModerationRules.delete(data.automod[submodule].ruleId, 'This AutoMod rule has been disabled.')
+
+        await this.guild.update(guild?.id as string, {
+            [`automod.${submodule}`]: {
+                enabled: false,
+                ruleId: null,
+            },
         });
     }
 
@@ -893,3 +721,13 @@ export class AutoModConfiguration {
         }
     }
 }
+
+type AutoModSubmodules = 
+    'invitelinks' |
+    'nsfwinvitelinks' |
+    'profanity' |
+    'sexualcontent' |
+    'spam' |
+    'zalgo' |
+    'emojispam' |
+    'customkeyword';
