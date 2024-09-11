@@ -6,3 +6,7 @@ package-lock.json
 pnpm-lock.yaml
 json.sqlite
 .idea
+# Sentry Config File
+.sentryclirc
+# ignore build folder, contains .map files for Sentry error tracking
+build
