@@ -54,7 +54,7 @@
 	},
 	"devDependencies": {
 		"@types/ms": "^0.7.34",
-		"@types/superagent": "^4.1.24",
+		"@types/superagent": "^8.0.0",
 		"@typescript-eslint/eslint-plugin": "^6.13.2",
 		"@typescript-eslint/parser": "^6.13.2",
 		"eslint": "^8.55.0",
