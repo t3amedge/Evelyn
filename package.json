@@ -35,7 +35,7 @@
 		"@sentry/node": "^7.86.0",
 		"@sentry/profiling-node": "^1.2.6",
 		"@shadowrunners/automata": "^2.4.3",
-		"captcha-canvas": "^3.2.1",
+		"captcha-canvas": "^4.0.0",
 		"cryptr": "^6.3.0",
 		"discord-arts": "^0.5.8",
 		"discord-economy-super": "^1.7.6",
