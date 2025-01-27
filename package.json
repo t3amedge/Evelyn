@@ -37,7 +37,7 @@
 		"@shadowrunners/automata": "^2.4.3",
 		"captcha-canvas": "^3.2.1",
 		"cryptr": "^6.3.0",
-		"discord-arts": "^0.5.8",
+		"discord-arts": "^0.7.0",
 		"discord-economy-super": "^1.7.6",
 		"discord-giveaways-super": "^1.0.9",
 		"discord-html-transcripts": "^3.2.0",
